@@ -14,9 +14,10 @@
 var Config = {};
 
 Config.devPortSmartHome = "3000";
-Config.smartHomeProviderGoogleClientId = "ZxjqWpsYj3"; // client id that Google will use
-Config.smartHomeProvideGoogleClientSecret = "hIMH3uWlMVrqa7FAbKLBoNUMCyLCtv"; // client secret that Google will use
+Config.smartHomeProviderGoogleClientId = "23fkawer"; // client id that Google will use
+Config.smartHomeProvideGoogleClientSecret = "'tibq39tmdafa'"; // client secret that Google will use
 Config.smartHomeProviderApiKey = "<API_KEY>"; // client API Key generated on the console
+Config.smartHomeUserId = "<UserId>"; // google user id. Go to https://plus.google.com/me. The me part of the URL will be replaced by your Google user ID
 Config.isLocal = false;
 
 function init() {
@@ -33,8 +34,9 @@ function init() {
 init();
 
 exports.devPortSmartHome = Config.devPortSmartHome;
-exports.smartHomeProviderGoogleClientId = Config.smartHomeProviderGoogleClientId;
-exports.smartHomeProvideGoogleClientSecret = Config.smartHomeProvideGoogleClientSecret;
 exports.smartHomeProviderCloudEndpoint = Config.smartHomeProviderCloudEndpoint;
 exports.smartHomeProviderApiKey = Config.smartHomeProviderApiKey;
+exports.smartHomeProviderGoogleClientId = Config.smartHomeProviderGoogleClientId;
+exports.smartHomeProvideGoogleClientSecret = Config.smartHomeProvideGoogleClientSecret;
+exports.smartHomeUserId = Config.smartHomeUserId;
 exports.isLocal = Config.isLocal;
