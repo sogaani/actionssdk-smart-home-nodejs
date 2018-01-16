@@ -38,166 +38,7 @@
 
 const config = require('./config-provider');
 const Data = {};
-
-/**
- * Structure of Auth
- * {
- *   clients: {
- *      <client id>:
- *          clientSecret: <value>,
- *          uid: <value>
- *      }
- *   },
- *   tokens: {
- *      <token id>: {
- *          <uid>: {}
- *      },
- *   },
- *   users: {
- *      <uid>: {
- *          name: <username>,
- *          password: <password>,
- *          tokens: [<token id>, ...],
- *          clients: [<client id>, ...]
- *      }
- *   }
- * }
- * @type {{}}
- */
-
-/*
- * This is a set of hardcoded Auth clients and users (and their access tokens)
- * for testing this mock OAuth server. These fake users can be used just to
- * test the service. This is not real user data.
- */
-const Auth = {
-  clients: {
-    'RKkWfsi0Z9': {
-      clientId: 'RKkWfsi0Z9',
-      clientSecret: 'eToBzeBT7OwrPQO8mZHsZtLp1qhQbe'
-    },
-    'ZxjqWpsYj3': {
-      clientId: 'ZxjqWpsYj3',
-      clientSecret: 'hIMH3uWlMVrqa7FAbKLBoNUMCyLCtv'
-    }
-  },
-  tokens: {
-    'psokmCxKjfhk7qHLeYd1': {
-      uid: '1234',
-      accessToken: 'psokmCxKjfhk7qHLeYd1',
-      refreshToken: 'psokmCxKjfhk7qHLeYd1',
-      userId: '1234'
-    },
-    'bfrrLnxxWdULSh3Y9IU2cA5pw8s4ub': {
-      uid: '2345',
-      accessToken: 'bfrrLnxxWdULSh3Y9IU2cA5pw8s4ub',
-      refreshToken: 'bfrrLnxxWdULSh3Y9IU2cA5pw8s4ub',
-      userId: '2345'
-    },
-    'kmjWldncnpr2drPCIe8n5TWvNEqqz8': {
-      uid: '3456',
-      accessToken: 'kmjWldncnpr2drPCIe8n5TWvNEqqz8',
-      refreshToken: 'kmjWldncnpr2drPCIe8n5TWvNEqqz8',
-      userId: '3456'
-    },
-    'CyZEA3izOsFoTd9hH76atzStqrSYVY': {
-      uid: '4567',
-      accessToken: 'CyZEA3izOsFoTd9hH76atzStqrSYVY',
-      refreshToken: 'CyZEA3izOsFoTd9hH76atzStqrSYVY',
-      userId: '4567'
-    },
-    'JK0u11W5jFXOCZCqUzF9zf9pnNZcim': {
-      uid: '5678',
-      accessToken: 'JK0u11W5jFXOCZCqUzF9zf9pnNZcim',
-      refreshToken: 'JK0u11W5jFXOCZCqUzF9zf9pnNZcim',
-      userId: '5678'
-    },
-    '2E1KuI3rQsrj51JyWs66nAShZwMliL': {
-      uid: '6789',
-      accessToken: '2E1KuI3rQsrj51JyWs66nAShZwMliL',
-      refreshToken: '2E1KuI3rQsrj51JyWs66nAShZwMliL',
-      userId: '6789'
-    },
-    '0EFBxAWH9iBYySHFQm5xpji8LWdlxg': {
-      uid: '7890',
-      accessToken: '0EFBxAWH9iBYySHFQm5xpji8LWdlxg',
-      refreshToken: '0EFBxAWH9iBYySHFQm5xpji8LWdlxg',
-      userId: '7890'
-    },
-    '7TX3ExuETedX8WneDT48': {
-      uid: '4321',
-      accessToken: '7TX3ExuETedX8WneDT48',
-      refreshToken: '7TX3ExuETedX8WneDT48',
-      userId: '4321'
-    }
-  },
-  users: {
-    '1234': {
-      uid: '1234',
-      name: 'rick',
-      password: 'oldman',
-      tokens: ['psokmCxKjfhk7qHLeYd1']
-    },
-    '2345': {
-      uid: '2345',
-      name: 'summer',
-      password: 'tr0y',
-      tokens: ['bfrrLnxxWdULSh3Y9IU2cA5pw8s4ub']
-    },
-    '3456': {
-      uid: '3456',
-      name: 'beth',
-      password: 'doctor',
-      tokens: ['kmjWldncnpr2drPCIe8n5TWvNEqqz8']
-    },
-    '4567': {
-      uid: '4567',
-      name: 'jerry',
-      password: 'b3th',
-      tokens: ['CyZEA3izOsFoTd9hH76atzStqrSYVY']
-    },
-    '5678': {
-      uid: '5678',
-      name: 'birdperson',
-      password: 'tammy',
-      tokens: ['JK0u11W5jFXOCZCqUzF9zf9pnNZcim']
-    },
-    '6789': {
-      uid: '6789',
-      name: 'squanchy',
-      password: 'squanchy',
-      tokens: ['2E1KuI3rQsrj51JyWs66nAShZwMliL']
-    },
-    '7890': {
-      uid: '7890',
-      name: 'jessica',
-      password: 'br4d',
-      tokens: ['0EFBxAWH9iBYySHFQm5xpji8LWdlxg']
-    },
-    '4321': {
-      uid: '4321',
-      name: 'morty',
-      password: 'j3ssica',
-      tokens: ['7TX3ExuETedX8WneDT48']
-    }
-  },
-  usernames: {
-    'rick': '1234',
-    'summer': '2345',
-    'beth': '3456',
-    'jerry': '4567',
-    'birdperson': '5678',
-    'squanchy': '6789',
-    'jessica': '7890',
-    'morty': '4321'
-  },
-  authcodes: {}
-};
-
-Auth.clients[config.smartHomeProviderGoogleClientId] = {
-  clientId: config.smartHomeProviderGoogleClientId,
-  clientSecret: config.smartHomeProvideGoogleClientSecret
-};
+Data[config.smartHomeUserId] = {};
 
 Data.version = 0;
 
@@ -351,43 +192,6 @@ Data.getStatus = function (uid, deviceIds = undefined) {
 };
 
 /**
- * register or update a user's data
- *
- * @param uid
- * @param authToken
- */
-Data.registerUser = function (uid, authToken) {
-  if (!authToken) {
-    console.error("cannot register a user without an authToken!");
-    return;
-  }
-  if (!Data[uid])
-    Data[uid] = {};
-  Auth[uid] = authToken;
-  Data.version++;
-};
-
-/**
- * removes a user from authstore
- *
- * @param uid
- * @param authToken
- */
-Data.removeUser = function (uid, authToken) {
-  if (!authToken) {
-    console.error("cannot remove a user without an authToken!");
-    return;
-  }
-  if (!Data.isValidAuth(uid, authToken)) {
-    console.error("cannot remove a user with mis-matched authToken!");
-    return;
-  }
-  delete Data[uid];
-  delete Auth[uid];
-  Data.version++;
-};
-
-/**
  * update a device
  *
  * @param uid
@@ -503,10 +307,7 @@ exports.getStatus = Data.getStatus;
 exports.getStates = Data.getStates;
 exports.getProperties = Data.getProperties;
 exports.isValidAuth = Data.isValidAuth;
-exports.registerUser = Data.registerUser;
-exports.removeUser = Data.removeUser;
 exports.execDevice = Data.execDevice;
 exports.registerDevice = Data.registerDevice;
 exports.resetDevices = Data.resetDevices;
 exports.removeDevice = Data.removeDevice;
-exports.Auth = Auth;
