@@ -28,6 +28,7 @@ Auth.getAccessToken = function (request) {
 };
 
 Auth.getProfile = function (token) {
+  console.info(token);
   const options = {
     method: 'GET'
   };
@@ -37,14 +38,14 @@ Auth.getProfile = function (token) {
 Auth.getUid = function (token) {
   return new Promise(function (resolve, reject) {
     Auth.getProfile(token).
-      then(info => resolve(info.id));
+      then(info => { console.info(info); resolve(info.id); });
   });
 }
 
 Auth.getUsername = function (token) {
   return new Promise(function (resolve, reject) {
     Auth.getProfile(token).
-      then(info => resolve(info.name));
+      then(info => { console.info(info); resolve(info.name); });
   });
 }
 
@@ -85,7 +86,7 @@ Auth.registerAuth = function (app) {
         tokens: [token]
       };
       req.session.user = user;
-    }else {
+    } else {
       const text = await _res.text();
       console.info(text);
     }

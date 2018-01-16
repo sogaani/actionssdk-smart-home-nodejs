@@ -20,6 +20,10 @@ Config.smartHomeProviderApiKey = "<API_KEY>"; // client API Key generated on the
 Config.smartHomeUserId = "<UserId>"; // google user id. Go to https://plus.google.com/me. The me part of the URL will be replaced by your Google user ID
 Config.isLocal = false;
 
+const option = require("../config.json");
+
+Config = Object.assign(Config, option);
+
 function init() {
   process.argv.forEach(function (value, i, arr) {
     if (value.includes("smart-home="))
