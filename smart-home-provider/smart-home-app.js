@@ -35,19 +35,29 @@ function registerAgent(app) {
    *   }
    * }
    */
-  app.post('/smarthome', function (request, response) {
+  app.post('/smarthome', async function (request, response) {
     console.log('post /smarthome', request.headers);
     let reqdata = request.body;
     console.log('post /smarthome', reqdata);
 
     let authToken = authProvider.getAccessToken(request);
-    let uid = datastore.Auth.tokens[authToken].uid;
-
+    let uid;
+    try {
+      uid = await authProvider.getUid(authToken);
+    } catch (error) {
+      console.log(error);
+      response.status(403).set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }).json({ error: "invalid auth" });
+      return;
+    }
     if (!reqdata.inputs) {
       response.status(401).set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({error: "missing inputs"});
+      }).json({ error: "missing inputs" });
+      return;
     }
     for (let i = 0; i < reqdata.inputs.length; i++) {
       let input = reqdata.inputs[i];
@@ -56,7 +66,7 @@ function registerAgent(app) {
         response.status(401).set({
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }).json({error: "missing inputs"});
+        }).json({ error: "missing inputs" });
         continue;
       }
       switch (intent) {
@@ -161,7 +171,7 @@ function registerAgent(app) {
           response.status(401).set({
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-          }).json({error: "missing intent"});
+          }).json({ error: "missing intent" });
           break;
       }
     }
@@ -261,7 +271,7 @@ function registerAgent(app) {
       response.status(500).set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({error: "failed"});
+      }).json({ error: "failed" });
       return;
     }
     let deviceList = [];
@@ -336,7 +346,7 @@ function registerAgent(app) {
       response.status(500).set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({error: "failed"});
+      }).json({ error: "failed" });
       return;
     }
     let deviceStates = {
@@ -513,7 +523,7 @@ function registerAgent(app) {
     // Check whether the device exists or whether it exists and it is disconnected.
     if (!execDevice || !execDevice[device.id].states.online) {
       console.warn("The device you want to control is offline");
-      return {status: "ERROR", errorCode: "deviceOffline"};
+      return { status: "ERROR", errorCode: "deviceOffline" };
     }
     let deviceCommand = {
       type: 'change',
@@ -531,11 +541,11 @@ function registerAgent(app) {
     Object.keys(command.params).forEach(function (key) {
       if (command.params.hasOwnProperty(key)) {
         if (payLoadDevice.states[key] != command.params[key]) {
-          return {status: "ERROR", errorCode: "notSupported"};
+          return { status: "ERROR", errorCode: "notSupported" };
         }
       }
     });
-    return {status: "SUCCESS"};
+    return { status: "SUCCESS" };
   }
 }
 
