@@ -75,7 +75,7 @@ app.post('/smart-home-api/register-device', async function (request, response) {
   let authToken = authProvider.getAccessToken(request);
   let uid;
   try {
-    uid = await authProvider.getUid(uid);
+    uid = await authProvider.getUid(authToken);
   } catch (error) {
     console.log(error);
     response.status(403).set({
@@ -125,7 +125,7 @@ app.post('/smart-home-api/reset-devices', async function (request, response) {
   let authToken = authProvider.getAccessToken(request);
   let uid;
   try {
-    uid = await authProvider.getUid(uid);
+    uid = await authProvider.getUid(authToken);
   } catch (error) {
     console.log(error);
     response.status(403).set({
@@ -168,7 +168,7 @@ app.post('/smart-home-api/remove-device', async function (request, response) {
   let authToken = authProvider.getAccessToken(request);
   let uid;
   try {
-    uid = await authProvider.getUid(uid);
+    uid = await authProvider.getUid(authToken);
   } catch (error) {
     console.log(error);
     response.status(403).set({
@@ -229,7 +229,7 @@ app.post('/smart-home-api/exec', async function (request, response) {
   let authToken = authProvider.getAccessToken(request);
   let uid;
   try {
-    uid = await authProvider.getUid(uid);
+    uid = await authProvider.getUid(authToken);
   } catch (error) {
     console.log(error);
     response.status(403).set({
@@ -275,7 +275,7 @@ app.post('/smart-home-api/execute-scene', async function (request, response) {
   let authToken = authProvider.getAccessToken(request);
   let uid;
   try {
-    uid = await authProvider.getUid(uid);
+    uid = await authProvider.getUid(authToken);
   } catch (error) {
     console.log(error);
     response.status(403).set({
@@ -324,7 +324,7 @@ app.post('/smart-home-api/status', async function (request, response) {
   let authToken = authProvider.getAccessToken(request);
   let uid;
   try {
-    uid = await authProvider.getUid(uid);
+    uid = await authProvider.getUid(authToken);
   } catch (error) {
     console.log(error);
     response.status(403).set({

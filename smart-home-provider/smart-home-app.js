@@ -43,7 +43,7 @@ function registerAgent(app) {
     let authToken = authProvider.getAccessToken(request);
     let uid;
     try {
-      uid = await authProvider.getUid(uid);
+      uid = await authProvider.getUid(authToken);
     } catch (error) {
       console.log(error);
       response.status(403).set({
