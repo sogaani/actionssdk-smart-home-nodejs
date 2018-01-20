@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "predeploy": [
+      "npm --prefix functions run build"
+    ]
+  },
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "/**",
+        "function": "smarthome"
+      }
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

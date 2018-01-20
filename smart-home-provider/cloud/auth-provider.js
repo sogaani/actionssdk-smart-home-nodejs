@@ -61,7 +61,7 @@ Auth.registerAuth = function (app) {
    */
 
   // get token.
-  app.use('/login', async function (req, res) {
+  app.get('/login', function (req, res) {
     console.log('/login ', req.body);
     const code = req.query.code;
     const options = {
@@ -76,21 +76,26 @@ Auth.registerAuth = function (app) {
     };
     console.info("POST GET TOKEN", 'https://accounts.google.com/o/oauth2/token');
     console.info(`POST payload: ${JSON.stringify(options)}`);
-    const _res = await fetch('https://accounts.google.com/o/oauth2/token', options);
-    if (_res.status == 200) {
-      const json = await _res.json();
-      const token = json.access_token;
-      const username = await Auth.getUsername(token);
-      const user = {
-        name: username,
-        tokens: [token]
-      };
-      req.session.user = user;
-    } else {
-      const text = await _res.text();
-      console.info(text);
-    }
-    return res.redirect('/frontend');
+    let token;
+    fetch('https://accounts.google.com/o/oauth2/token', options).
+      then(_res => _res.json()).
+      then(json => {
+        token = json.access_token;
+        Auth.getUsername(token);
+      }).
+      then(username => {
+        const user = {
+          name: username,
+          tokens: [token]
+        };
+        req.session.user = user;
+        return res.redirect('/');
+
+      }).
+      catch(error => {
+        console.info(error);
+        return res.redirect('/');
+      })
   });
 };
 
