@@ -1,0 +1,40 @@
+{
+ "name": "functions",
+ "description": "Cloud Functions for Firebase",
+ "scripts": {
+  "lint": "./node_modules/.bin/eslint .",
+  "serve": "firebase serve --only functions",
+  "shell": "firebase experimental:functions:shell",
+  "start": "npm run shell",
+  "deploy": "firebase deploy --only functions",
+  "logs": "firebase functions:log",
+  "build": "npm-run-all -s build:copy build:copy2 build:rm build:project build:merge",
+  "build:copy": "cpx \"../../smart-home-provider/**\" ./app",
+  "build:copy2": "cpx \"../../smart-home-provider/frontend/**\" ../public",
+  "build:rm": "rimraf app/node_modules app/frontend",
+  "build:project": "node ./assets/configure.js ../.firebaserc ./app/config.json",
+  "build:merge": "mergedeps ./app/package.json ./package.json"
+ },
+ "dependencies": {
+  "actions-on-google": "^1.0.3",
+  "body-parser": "^1.15.2",
+  "cors": "^2.8.4",
+  "ejs": "^2.5.7",
+  "express": "^4.14.0",
+  "express-session": "^1.15.0",
+  "firebase-admin": "~5.8.1",
+  "firebase-functions": "^0.8.1",
+  "morgan": "^1.7.0",
+  "ngrok": "^2.2.5",
+  "node-fetch": "^1.6.3"
+ },
+ "devDependencies": {
+  "cpx": "^1.5.0",
+  "eslint": "^4.12.0",
+  "eslint-plugin-promise": "^3.6.0",
+  "npm-run-all": "^4.1.2",
+  "mergedeps": "^1.0.1",
+  "rimraf": "^2.6.2"
+ },
+ "private": true
+}

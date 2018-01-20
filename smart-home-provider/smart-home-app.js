@@ -35,146 +35,144 @@ function registerAgent(app) {
    *   }
    * }
    */
-  app.post('/smarthome', async function (request, response) {
+  app.post('/smarthome', function (request, response) {
     console.log('post /smarthome', request.headers);
     let reqdata = request.body;
     console.log('post /smarthome', reqdata);
 
     let authToken = authProvider.getAccessToken(request);
-    let uid;
-    try {
-      uid = await authProvider.getUid(authToken);
-    } catch (error) {
+    authProvider.getUid(authToken).then((uid) => {
+      if (!reqdata.inputs) {
+        response.status(401).set({
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }).json({ error: "missing inputs" });
+        return;
+      }
+      for (let i = 0; i < reqdata.inputs.length; i++) {
+        let input = reqdata.inputs[i];
+        let intent = input.intent;
+        if (!intent) {
+          response.status(401).set({
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }).json({ error: "missing inputs" });
+          continue;
+        }
+        switch (intent) {
+          case "action.devices.SYNC":
+            console.log('post /smarthome SYNC');
+            /**
+             * request:
+             * {
+             *  "requestId": "ff36a3cc-ec34-11e6-b1a0-64510650abcf",
+             *  "inputs": [{
+             *      "intent": "action.devices.SYNC",
+             *  }]
+             * }
+             */
+            sync({
+              uid: uid,
+              auth: authToken,
+              requestId: reqdata.requestId
+            }, response);
+            break;
+          case "action.devices.QUERY":
+            console.log('post /smarthome QUERY');
+            /**
+             * request:
+             * {
+             *   "requestId": "ff36a3cc-ec34-11e6-b1a0-64510650abcf",
+             *   "inputs": [{
+             *       "intent": "action.devices.QUERY",
+             *       "payload": {
+             *          "devices": [{
+             *            "id": "123",
+             *            "customData": {
+             *              "fooValue": 12,
+             *              "barValue": true,
+             *              "bazValue": "alpaca sauce"
+             *            }
+             *          }, {
+             *            "id": "234",
+             *            "customData": {
+             *              "fooValue": 74,
+             *              "barValue": false,
+             *              "bazValue": "sheep dip"
+             *            }
+             *          }]
+             *       }
+             *   }]
+             * }
+             */
+            query({
+              uid: uid,
+              auth: authToken,
+              requestId: reqdata.requestId,
+              devices: reqdata.inputs[0].payload.devices
+            }, response);
+
+            break;
+          case "action.devices.EXECUTE":
+            console.log('post /smarthome EXECUTE');
+            /**
+             * request:
+             * {
+             *   "requestId": "ff36a3cc-ec34-11e6-b1a0-64510650abcf",
+             *   "inputs": [{
+             *     "intent": "action.devices.EXECUTE",
+             *     "payload": {
+             *       "commands": [{
+             *         "devices": [{
+             *           "id": "123",
+             *           "customData": {
+             *             "fooValue": 12,
+             *             "barValue": true,
+             *             "bazValue": "alpaca sauce"
+             *           }
+             *         }, {
+             *           "id": "234",
+             *           "customData": {
+             *              "fooValue": 74,
+             *              "barValue": false,
+             *              "bazValue": "sheep dip"
+             *           }
+             *         }],
+             *         "execution": [{
+             *           "command": "action.devices.commands.OnOff",
+             *           "params": {
+             *             "on": true
+             *           }
+             *         }]
+             *       }]
+             *     }
+             *   }]
+             * }
+             */
+            exec({
+              uid: uid,
+              auth: authToken,
+              requestId: reqdata.requestId,
+              commands: reqdata.inputs[0].payload.commands
+            }, response);
+
+            break;
+          default:
+            response.status(401).set({
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            }).json({ error: "missing intent" });
+            break;
+        }
+      }
+    }).catch((error) => {
       console.log(error);
       response.status(403).set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }).json({ error: "invalid auth" });
       return;
-    }
-    if (!reqdata.inputs) {
-      response.status(401).set({
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({ error: "missing inputs" });
-      return;
-    }
-    for (let i = 0; i < reqdata.inputs.length; i++) {
-      let input = reqdata.inputs[i];
-      let intent = input.intent;
-      if (!intent) {
-        response.status(401).set({
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }).json({ error: "missing inputs" });
-        continue;
-      }
-      switch (intent) {
-        case "action.devices.SYNC":
-          console.log('post /smarthome SYNC');
-          /**
-           * request:
-           * {
-           *  "requestId": "ff36a3cc-ec34-11e6-b1a0-64510650abcf",
-           *  "inputs": [{
-           *      "intent": "action.devices.SYNC",
-           *  }]
-           * }
-           */
-          sync({
-            uid: uid,
-            auth: authToken,
-            requestId: reqdata.requestId
-          }, response);
-          break;
-        case "action.devices.QUERY":
-          console.log('post /smarthome QUERY');
-          /**
-           * request:
-           * {
-           *   "requestId": "ff36a3cc-ec34-11e6-b1a0-64510650abcf",
-           *   "inputs": [{
-           *       "intent": "action.devices.QUERY",
-           *       "payload": {
-           *          "devices": [{
-           *            "id": "123",
-           *            "customData": {
-           *              "fooValue": 12,
-           *              "barValue": true,
-           *              "bazValue": "alpaca sauce"
-           *            }
-           *          }, {
-           *            "id": "234",
-           *            "customData": {
-           *              "fooValue": 74,
-           *              "barValue": false,
-           *              "bazValue": "sheep dip"
-           *            }
-           *          }]
-           *       }
-           *   }]
-           * }
-           */
-          query({
-            uid: uid,
-            auth: authToken,
-            requestId: reqdata.requestId,
-            devices: reqdata.inputs[0].payload.devices
-          }, response);
-
-          break;
-        case "action.devices.EXECUTE":
-          console.log('post /smarthome EXECUTE');
-          /**
-           * request:
-           * {
-           *   "requestId": "ff36a3cc-ec34-11e6-b1a0-64510650abcf",
-           *   "inputs": [{
-           *     "intent": "action.devices.EXECUTE",
-           *     "payload": {
-           *       "commands": [{
-           *         "devices": [{
-           *           "id": "123",
-           *           "customData": {
-           *             "fooValue": 12,
-           *             "barValue": true,
-           *             "bazValue": "alpaca sauce"
-           *           }
-           *         }, {
-           *           "id": "234",
-           *           "customData": {
-           *              "fooValue": 74,
-           *              "barValue": false,
-           *              "bazValue": "sheep dip"
-           *           }
-           *         }],
-           *         "execution": [{
-           *           "command": "action.devices.commands.OnOff",
-           *           "params": {
-           *             "on": true
-           *           }
-           *         }]
-           *       }]
-           *     }
-           *   }]
-           * }
-           */
-          exec({
-            uid: uid,
-            auth: authToken,
-            requestId: reqdata.requestId,
-            commands: reqdata.inputs[0].payload.commands
-          }, response);
-
-          break;
-        default:
-          response.status(401).set({
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-          }).json({ error: "missing intent" });
-          break;
-      }
-    }
+    });
   });
   /**
    * Enables prelight (OPTIONS) requests made cross-domain.
