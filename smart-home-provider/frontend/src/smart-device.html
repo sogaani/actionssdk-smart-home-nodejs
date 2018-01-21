@@ -39,7 +39,7 @@ limitations under the License.
                 margin-right: 0px;
             }
 
-            ::slotted(iron-icon) {
+             ::slotted(iron-icon) {
                 padding-top: 24px;
                 padding-bottom: 24px;
                 width: 128px;
@@ -158,9 +158,7 @@ limitations under the License.
             _handleRegister() {
                 // Register source if undefined
                 console.log(this);
-                if (!this._source) {
-                    this._source = new EventSource(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/device-connection/' + this.device.id);
-                }
+
                 this._callSmartHomeProviderCloud('/register-device', 'POST', this.device)
                     .then(this._changeEventSource.bind(this))
                     .catch(function (error) {
@@ -173,7 +171,7 @@ limitations under the License.
                     .catch(function (error) {
                         console.log('>>> failed to remove device with Smart Home Provider cloud:', error);
                     });
-                if (this._source) this._source.close();
+                if (this.unsubscribe) this.unsubscribe();
 
                 const app = document.querySelector('my-app');
                 const devices = app[this.type];
@@ -214,27 +212,50 @@ limitations under the License.
             _changeEventSource() {
                 if (!this.device.states.online) {
                     // going offline
-                    this._source.close();
+                    if(this.unsubscribe) this.unsubscribe();
                 } else {
-                    // going online
-                    this._source = new EventSource(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/device-connection/' + this.device.id);
-                    this._source.addEventListener('change', function (e) {
-                        this._changeState(JSON.parse(e.data));
-                    }.bind(this));
-                    this._source.addEventListener('pullUp', function (e) {
-                        this._exec();
-                    }.bind(this));
-                    this._source.addEventListener('error', function (error) {
-                        if (error.eventPhase == 2) {
-                            console.log('>>> event source closed');
-                            setTimeout(this._changeEventSource.bind(this), 30000);
-                            return;
-                        } else {
-                            console.error('>>> error in event source:', error);
-                        }
-                    }.bind(this));
+                    const options = {
+                        method: 'GET'
+                    };
+
+                    fetch('https://www.googleapis.com/oauth2/v1/userinfo?access_token=' + AUTH_TOKEN, options)
+                        .then(res => res.json())
+                        .then(function (json) {
+                            this._listenFirestore(json.id);
+                        }.bind(this));
+
+                    /*
+                // going online
+                this._source = new EventSource(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/device-connection/' + this.device.id);
+                this._source.addEventListener('change', function (e) {
+                    this._changeState(JSON.parse(e.data));
+                }.bind(this));
+                this._source.addEventListener('pullUp', function (e) {
+                    this._exec();
+                }.bind(this));
+                this._source.addEventListener('error', function (error) {
+                    if (error.eventPhase == 2) {
+                        console.log('>>> event source closed');
+                        setTimeout(this._changeEventSource.bind(this), 30000);
+                        return;
+                    } else {
+                        console.error('>>> error in event source:', error);
+                    }
+                }.bind(this));
+                */
                 }
                 this._notifyStateChange();
+            }
+
+            _listenFirestore(id) {
+                const onDatabaseChange = function (doc) {
+                    console.log(doc.data());
+                    const data = doc.data();
+                    const states = data && data.states ? data.states : {};
+                    this._changeState(states);
+                }.bind(this);
+
+                this.unsubscribe = FIRESTORE.collection(id).doc(this.device.id).onSnapshot(onDatabaseChange);
             }
 
             _changeState(changes) {

@@ -57,7 +57,7 @@ limitations under the License.
 
     <script>
         const SMART_HOME_PROVIDER_CLOUD_ENDPOINT = '/smart-home-api';
-
+        var FIRESTORE;
         // Setup Polymer options
         window.Polymer = {
             dom: 'shadow',
@@ -76,8 +76,8 @@ limitations under the License.
                         authDomain: FIREBASE_AUTH_DOMAIN, //'### FIREBASE AUTH DOMAIN ###',
                         projectId: CLOUD_FIRESTORE_PROJECT_ID//'### CLOUD FIRESTORE PROJECT ID ###'
                     });
-
-                    var FIRESTORE = firebase.firestore();
+                    firebase.auth().signInWithCustomToken(FIRESTORE_CUSTOMTOKEN);
+                    FIRESTORE = firebase.firestore();
                 }
                 var script = document.createElement('script');
                 script.async = true;
