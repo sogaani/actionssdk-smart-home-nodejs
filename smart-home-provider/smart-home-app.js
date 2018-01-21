@@ -35,7 +35,7 @@ function registerAgent(app) {
    *   }
    * }
    */
-  app.post('/smarthome', async function (request, response) {
+  app.post('/smarthome', function (request, response) {
     console.log('post /smarthome', request.headers);
     let reqdata = request.body;
     console.log('post /smarthome', reqdata);
