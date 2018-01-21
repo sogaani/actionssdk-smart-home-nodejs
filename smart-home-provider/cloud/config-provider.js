@@ -20,6 +20,12 @@ Config.smartHomeProviderApiKey = "<API_KEY>"; // client API Key generated on the
 Config.smartHomeUserId = "<UserId>"; // google user id. Go to https://plus.google.com/me. The me part of the URL will be replaced by your Google user ID
 Config.isLocal = false;
 
+// firestore setting
+Config.firebaseApiKey = "<API_KEY>"; // client id that Google will use
+Config.firebaseAuthDomain = "<AUTH_DOMAIN>"; // client secret that Google will use
+Config.cloudFirestoreProjectId = "<PROJECT_ID>"; // client API Key generated on the console
+Config.firebaseAdmin = {}
+
 const option = require("../config.json");
 
 Config = Object.assign(Config, option);
@@ -44,3 +50,8 @@ exports.smartHomeProviderGoogleClientId = Config.smartHomeProviderGoogleClientId
 exports.smartHomeProvideGoogleClientSecret = Config.smartHomeProvideGoogleClientSecret;
 exports.smartHomeUserId = Config.smartHomeUserId;
 exports.isLocal = Config.isLocal;
+
+exports.firebaseApiKey = Config.firebaseApiKey;
+exports.firebaseAuthDomain = Config.firebaseAuthDomain;
+exports.cloudFirestoreProjectId = Config.cloudFirestoreProjectId;
+exports.firebaseAdmin = Config.firebaseAdmin;
