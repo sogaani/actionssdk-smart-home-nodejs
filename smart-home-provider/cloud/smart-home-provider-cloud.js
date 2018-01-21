@@ -70,7 +70,7 @@ const requestSyncEndpoint = 'https://homegraph.googleapis.com/v1/devices:request
  *   }
  * }
  */
-app.post('/smart-home-api/register-device', async function (request, response) {
+app.post('/smart-home-api/register-device', function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
@@ -116,7 +116,7 @@ app.post('/smart-home-api/register-device', async function (request, response) {
 /**
  * Can be used to reset all devices for a user account.
  */
-app.post('/smart-home-api/reset-devices', async function (request, response) {
+app.post('/smart-home-api/reset-devices', function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
@@ -152,7 +152,7 @@ app.post('/smart-home-api/reset-devices', async function (request, response) {
  * Can be used to unregister a device.
  * Removing a device would be supplying the device id without any traits.
  */
-app.post('/smart-home-api/remove-device', async function (request, response) {
+app.post('/smart-home-api/remove-device', function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
@@ -211,7 +211,7 @@ app.post('/smart-home-api/remove-device', async function (request, response) {
  *   ...
  * }
  */
-app.post('/smart-home-api/exec', async function (request, response) {
+app.post('/smart-home-api/exec', function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
@@ -299,7 +299,7 @@ app.post('/smart-home-api/execute-scene', function (request, response) {
  *   },
  * }
  */
-app.post('/smart-home-api/status', async function (request, response) {
+app.post('/smart-home-api/status', function (request, response) {
   // console.log('post /smart-home-api/status');
 
   let authToken = authProvider.getAccessToken(request);
