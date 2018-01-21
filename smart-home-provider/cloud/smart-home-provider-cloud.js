@@ -42,12 +42,12 @@ app.use(session({
   genid: function (req) {
     return authProvider.genRandomString();
   },
+  name: '__session',
   secret: 'xyzsecret',
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false }
 }));
-const deviceConnections = {};
 const requestSyncEndpoint = 'https://homegraph.googleapis.com/v1/devices:requestSync?key=';
 
 /**
@@ -74,47 +74,43 @@ app.post('/smart-home-api/register-device', async function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
-  try {
-    uid = await authProvider.getUid(authToken);
-  } catch (error) {
+  let device = request.body;
+
+  authProvider.getUid(authToken).then(_uid => {
+    uid = _uid;
+    return datastore.isValidAuth(uid, authToken)
+  }).then(() => {
+    return datastore.registerDevice(uid, device);
+  }).then(() => {
+    // Get registered device
+    return datastore.getStatus(uid, [device.id]);
+  }).then(_device => {
+    if (!_device || !_device[device.id]) {
+      response.status(401).set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }).json({ error: "failed to register device" });
+      return;
+    }
+
+    // Resync for the user
+    app.requestSync(authToken, uid);
+
+    // otherwise, all good!
+    response.status(200)
+      .set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      })
+      .send(_device);
+  }).catch((error) => {
     console.log(error);
     response.status(403).set({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }).json({ error: "invalid auth" });
     return;
-  }
-
-  if (!datastore.isValidAuth(uid, authToken)) {
-    console.error("Invalid auth", authToken, "for user", uid);
-    response.status(403).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "invalid auth" });
-    return;
-  }
-
-  let device = request.body;
-  datastore.registerDevice(uid, device);
-
-  let registeredDevice = datastore.getStatus(uid, [device.id]);
-  if (!registeredDevice || !registeredDevice[device.id]) {
-    response.status(401).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "failed to register device" });
-    return;
-  }
-
-  app.requestSync(authToken, uid);
-
-  // otherwise, all good!
-  response.status(200)
-    .set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    })
-    .send(registeredDevice);
+  });
 });
 
 /**
@@ -124,39 +120,32 @@ app.post('/smart-home-api/reset-devices', async function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
-  try {
-    uid = await authProvider.getUid(authToken);
-  } catch (error) {
+
+  authProvider.getUid(authToken).then(_uid => {
+    uid = _uid;
+    return datastore.isValidAuth(uid, authToken)
+  }).then(() => {
+    return datastore.resetDevices(uid);
+  }).then(() => {
+    // Resync for the user
+    app.requestSync(authToken, uid);
+    return datastore.getUid(uid);
+  }).then(devices => {
+    // otherwise, all good!
+    response.status(200)
+      .set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      })
+      .send(devices);
+  }).catch((error) => {
     console.log(error);
     response.status(403).set({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }).json({ error: "invalid auth" });
     return;
-  }
-
-  if (!datastore.isValidAuth(uid, authToken)) {
-    console.error("Invalid auth", authToken, "for user", uid);
-    response.status(403).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "invalid auth" });
-    return;
-  }
-
-  let device = request.body;
-  datastore.resetDevices(uid);
-
-  // Resync for the user
-  app.requestSync(authToken, uid);
-
-  // otherwise, all good!
-  response.status(200)
-    .set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    })
-    .send(datastore.getUid(uid));
+  });
 });
 
 /**
@@ -167,47 +156,45 @@ app.post('/smart-home-api/remove-device', async function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
-  try {
-    uid = await authProvider.getUid(authToken);
-  } catch (error) {
+  let device = request.body;
+
+  authProvider.getUid(authToken).then(_uid => {
+    uid = _uid;
+    return datastore.isValidAuth(uid, authToken)
+  }).then(() => {
+    return datastore.removeDevice(uid, device);
+  }).then(() => {
+    // Get registered device
+    return datastore.getStatus(uid, [device.id]);
+  }).then(_device => {
+    if (_device[device.id]) {
+      response.status(500).set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }).json({ error: "failed to remove device" });
+      return;
+    }
+
+    // Resync for the user
+    app.requestSync(authToken, uid);
+
+    // otherwise, all good!
+    return datastore.getUid(uid);
+  }).then(devices => {
+    response.status(200)
+      .set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      })
+      .send(devices);
+  }).catch((error) => {
     console.log(error);
     response.status(403).set({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }).json({ error: "invalid auth" });
     return;
-  }
-
-  if (!datastore.isValidAuth(uid, authToken)) {
-    console.error("Invalid auth", authToken, "for user", uid);
-    response.status(403).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "invalid auth" });
-    return;
-  }
-
-  let device = request.body;
-  datastore.removeDevice(uid, device);
-
-  let removedDevice = datastore.getStatus(uid, [device.id]);
-  if (removedDevice[device.id]) {
-    response.status(500).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "failed to remove device" });
-    return;
-  }
-
-  app.requestSync(authToken, uid);
-
-  // otherwise, all good!
-  response.status(200)
-    .set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    })
-    .send(datastore.getUid(uid));
+  });
 });
 
 /**
@@ -228,72 +215,66 @@ app.post('/smart-home-api/exec', async function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
-  try {
-    uid = await authProvider.getUid(authToken);
-  } catch (error) {
+  let device = request.body;
+
+  authProvider.getUid(authToken).then(_uid => {
+    uid = _uid;
+    return datastore.isValidAuth(uid, authToken)
+  }).then(() => {
+    return app.smartHomeExec(uid, device);
+  }).then(_device => {
+    if (!_device || !_device[device.id]) {
+      response.status(500).set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }).json({ error: "failed to exec device" });
+      return;
+    }
+
+    if (request.body.nameChanged) {
+      console.log("calling request sync from exec to update name");
+      app.requestSync(authToken, uid);
+    }
+
+    response.status(200)
+      .set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      })
+      .send(_device);
+  }).catch((error) => {
     console.log(error);
     response.status(403).set({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }).json({ error: "invalid auth" });
     return;
-  }
-
-  if (!datastore.isValidAuth(uid, authToken)) {
-    response.status(403).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "invalid auth" });
-    return;
-  }
-
-  let executedDevice = app.smartHomeExec(uid, request.body);
-  if (!executedDevice || !executedDevice[request.body.id]) {
-    response.status(500).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "failed to exec device" });
-    return;
-  }
-
-  if (request.body.nameChanged) {
-    console.log("calling request sync from exec to update name");
-    app.requestSync(authToken, uid);
-  }
-
-  // otherwise, all good!
-  response.status(200)
-    .set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    })
-    .send(executedDevice);
+  });
 });
 
-app.post('/smart-home-api/execute-scene', async function (request, response) {
+app.post('/smart-home-api/execute-scene', function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
-  let uid;
-  try {
-    uid = await authProvider.getUid(authToken);
-  } catch (error) {
+  authProvider.getUid(authToken).then(uid => {
+
+    reqdata = request.body;
+    data = {
+      requestId: reqdata.requestId,
+      uid: uid,
+      auth: authToken,
+      commands: reqdata.inputs[0].payload.commands
+    };
+
+    return google_ha.registerAgent.exec(data, response);
+
+  }).catch((error) => {
     console.log(error);
     response.status(403).set({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }).json({ error: "invalid auth" });
     return;
-  }
-
-  reqdata = request.body;
-  data = {
-    requestId: reqdata.requestId,
-    uid: uid,
-    auth: authToken,
-    commands: reqdata.inputs[0].payload.commands
-  };
-
-  return google_ha.registerAgent.exec(data, response);
+  });
 });
 
 /**
@@ -323,90 +304,73 @@ app.post('/smart-home-api/status', async function (request, response) {
 
   let authToken = authProvider.getAccessToken(request);
   let uid;
-  try {
-    uid = await authProvider.getUid(authToken);
-  } catch (error) {
+  let device = request.body;
+
+  authProvider.getUid(authToken).then(_uid => {
+    uid = _uid;
+    return datastore.isValidAuth(uid, authToken)
+  }).then(() => {
+    return app.smartHomeQuery(uid, device);
+  }).then(devices => {
+    if (!devices) {
+      response.status(500).set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }).json({ error: "failed to get device" });
+      return;
+    }
+
+    // otherwise, all good!
+    response.status(200)
+      .set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      })
+      .send(devices);
+  }).catch((error) => {
     console.log(error);
     response.status(403).set({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }).json({ error: "invalid auth" });
     return;
-  }
-
-  if (!datastore.isValidAuth(uid, authToken)) {
-    response.status(403).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "invalid auth" });
-    return;
-  }
-
-  let devices = app.smartHomeQuery(uid, request.body);
-
-  if (!devices) {
-    response.status(500).set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }).json({ error: "failed to get device" });
-    return;
-  }
-
-  // otherwise, all good!
-  response.status(200)
-    .set({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    })
-    .send(devices);
-});
-
-/**
- * Creates an Server Send Event source for a device.
- * Called from a device.
- */
-app.get('/smart-home-api/device-connection/:deviceId', function (request, response) {
-  const deviceId = request.params.deviceId;
-  // console.log('get /smart-home-api/device-connection/' + deviceId);
-  deviceConnections[deviceId] = response;
-
-  response.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  });
-  response.connection.setTimeout(0);
-  response.on('close', function () {
-    delete deviceConnections[deviceId];
   });
 });
 
 // frontend UI
 app.set('jsonp callback name', 'cid');
 app.get('/getauthcode', function (req, resp) {
-  if (!req.session.user) {
+  if (!req.session || !req.session.user) {
     resp.status(200).send('' +
       '(function(){' +
       'window.location.replace("https://accounts.google.com/o/oauth2/v2/auth' +
-      `?client_id=${config.smartHomeProviderGoogleClientId}` + 
-      `&redirect_uri=${config.smartHomeProviderCloudEndpoint}/login` + 
+      `?client_id=${config.smartHomeProviderGoogleClientId}` +
+      `&redirect_uri=${config.smartHomeProviderCloudEndpoint}/login` +
       '&response_type=code' +
       '&scope=openid+profile")' +
       '})();' +
       '');// redirect to google login
   } else {
-    resp.status(200).send('' +
-      'var AUTH_TOKEN = "' + req.session.user.tokens[0] + '";' +
-      'var USERNAME = "' + req.session.user.name + '";' +
-      '');
+    authProvider.getUid(req.session.user.tokens[0]).then(_uid => {
+      return datastore.getFirestoreToken(_uid);
+    }).then(customToken => {
+      resp.status(200).send('' +
+        'var AUTH_TOKEN = "' + req.session.user.tokens[0] + '";' +
+        'var USERNAME = "' + req.session.user.name + '";' +
+        'var FIREBASE_API_KEY = "' + config.firebaseApiKey + '";' +
+        'var FIREBASE_AUTH_DOMAIN = "' + config.firebaseAuthDomain + '";' +
+        'var CLOUD_FIRESTORE_PROJECT_ID = "' + config.cloudFirestoreProjectId + '";' +
+        'var FIRESTORE_CUSTOMTOKEN = "' + customToken + '";' +
+        '');
+    }).catch(error => {
+      console.error('getFirestoreToken:', error);
+      resp.status(500).send('auth error');
+    });
   }
 });
-app.use('/frontend', express.static('./frontend'));
-app.use('/frontend/', express.static('./frontend'));
-app.use('/', express.static('./frontend'));
+app.use('/frontend', express.static(__dirname + '/../frontend'));
+app.use('/frontend/', express.static(__dirname + '/../frontend'));
+app.use('/', express.static(__dirname + '/../frontend'));
 
 app.smartHomeSync = function (uid) {
   // console.log('smartHomeSync');
@@ -446,35 +410,14 @@ app.smartHomeQueryStates = function (uid, deviceList) {
 
 app.smartHomeExec = function (uid, device) {
   // console.log('smartHomeExec', device);
-  datastore.execDevice(uid, device);
-  let executedDevice = datastore.getStatus(uid, [device.id]);
-  console.log('smartHomeExec executedDevice', JSON.stringify(executedDevice));
-  return executedDevice;
-};
-
-app.changeState = function (command) {
-  return new Promise(function (resolve, reject) {
-    if (command.type == 'change') {
-      for (let deviceId in command.state) {
-        const deviceChanges = command.state[deviceId];
-        // console.log('>>> changeState: deviceChanges', deviceChanges);
-
-        const connection = deviceConnections[deviceId];
-        if (!connection) {
-          // console.log('>>> changeState: connection not found for', deviceId);
-          return reject(new Error('Device ' + deviceId + ' unknown to Amce Cloud'));
-        }
-
-        // console.log('>>> sending changes to device', deviceId, deviceChanges);
-        connection.write('event: change\n');
-        connection.write('data: ' + JSON.stringify(deviceChanges) + '\n\n');
-      }
-      resolve();
-    } else if (command.type == 'delete') {
-      reject(new Error('Device deletion unimplemented'));
-    } else {
-      reject(new Error('Unknown change type "' + command.type + '"'));
-    }
+  return new Promise((resolve, reject) => {
+    datastore.execDevice(uid, device)
+      .then(() => {
+        return datastore.getStatus(uid, [device.id]);
+      }).then(executedDevice => {
+        console.log('smartHomeExec executedDevice', JSON.stringify(executedDevice));
+        resolve(executedDevice);
+      });
   });
 };
 
@@ -501,45 +444,50 @@ app.requestSync = function (authToken, uid) {
 
 const appPort = process.env.PORT || config.devPortSmartHome;
 
-const server = app.listen(appPort, function () {
-  const host = server.address().address;
-  const port = server.address().port;
+// firebase
+if (process.env.GCLOUD_PROJECT) {
+  exports.app = app;
+} else {
+  const server = app.listen(appPort, function () {
+    const host = server.address().address;
+    const port = server.address().port;
 
-  console.log('Smart Home Cloud and App listening at %s:%s', host, port);
+    console.log('Smart Home Cloud and App listening at %s:%s', host, port);
 
-  if (config.isLocal) {
-    ngrok.connect(config.devPortSmartHome, function (err, url) {
-      if (err) {
-        console.log('ngrok err', err);
-        process.exit();
-      }
+    if (config.isLocal) {
+      ngrok.connect(config.devPortSmartHome, function (err, url) {
+        if (err) {
+          console.log('ngrok err', err);
+          process.exit();
+        }
 
-      console.log("|###################################################|");
-      console.log("|                                                   |");
-      console.log("|        COPY & PASTE NGROK URL BELOW:              |");
-      console.log("|                                                   |");
-      console.log("|          " + url + "                |");
-      console.log("|                                                   |");
-      console.log("|###################################################|");
+        console.log("|###################################################|");
+        console.log("|                                                   |");
+        console.log("|        COPY & PASTE NGROK URL BELOW:              |");
+        console.log("|                                                   |");
+        console.log("|          " + url + "                |");
+        console.log("|                                                   |");
+        console.log("|###################################################|");
 
-      console.log("=====");
-      console.log("Visit the Actions on Google console at http://console.actions.google.com")
-      console.log("Replace the webhook URL in the Actions section with:");
-      console.log("    " + url + "/smarthome");
+        console.log("=====");
+        console.log("Visit the Actions on Google console at http://console.actions.google.com")
+        console.log("Replace the webhook URL in the Actions section with:");
+        console.log("    " + url + "/smarthome");
 
-      console.log("In the console, set the Authorization URL to:");
-      console.log("    " + url + "/oauth");
+        console.log("In the console, set the Authorization URL to:");
+        console.log("    " + url + "/oauth");
 
-      console.log("");
-      console.log("Then set the Token URL to:");
-      console.log("    " + url + "/token");
-      console.log("");
+        console.log("");
+        console.log("Then set the Token URL to:");
+        console.log("    " + url + "/token");
+        console.log("");
 
-      console.log("Finally press the 'TEST DRAFT' button");
-    });
-  }
+        console.log("Finally press the 'TEST DRAFT' button");
+      });
+    }
 
-});
+  });
+}
 
 function registerGoogleHa(app) {
   google_ha.registerAgent(app);

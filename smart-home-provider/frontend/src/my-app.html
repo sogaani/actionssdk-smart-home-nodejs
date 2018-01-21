@@ -34,7 +34,7 @@ limitations under the License.
 <dom-module id="my-app">
     <template>
         <style>
-            :host {
+             :host {
                 --app-primary-color: #4285f4;
                 --app-secondary-color: black;
                 display: block;
@@ -51,8 +51,10 @@ limitations under the License.
 
             #modal {
                 width: 42%;
-                display: -webkit-flex; /* Safari */
-                -webkit-justify-content: space-around; /* Safari 6.1+ */
+                display: -webkit-flex;
+                /* Safari */
+                -webkit-justify-content: space-around;
+                /* Safari 6.1+ */
                 display: flex;
                 justify-content: space-around;
                 overflow-y: scroll;
@@ -69,11 +71,11 @@ limitations under the License.
             }
 
             .square:hover {
-                background-color: rgb(238,238,238);
+                background-color: rgb(238, 238, 238);
             }
 
             iron-icon {
-                height:55%;
+                height: 55%;
                 width: 55%;
                 color: #757575;
             }
@@ -85,7 +87,7 @@ limitations under the License.
                 float: right;
             }
 
-            #close > iron-icon {
+            #close>iron-icon {
                 height: 100%;
                 width: 100%;
                 cursor: pointer;
@@ -103,14 +105,13 @@ limitations under the License.
                 margin: 20% auto;
             }
 
-            #no-devices-msg > p {
+            #no-devices-msg>p {
                 text-align: center;
             }
 
             #check {
                 display: none;
             }
-
         </style>
 
         <!-- Main content -->
@@ -234,6 +235,7 @@ limitations under the License.
 
     <script>
         var nextDeviceId = 0;
+        var devices = {};
 
         function getNextDeviceId() {
             return nextDeviceId++;
@@ -286,18 +288,9 @@ limitations under the License.
 
                 window.requestAnimationFrame(() => {
                     this.$.add.addEventListener('click', e => this.$.modal.open());
-                    this._auth()
-                        .then(() => {
-                            const options = {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': 'Bearer ' + AUTH_TOKEN
-                                }
-                            };
-                            return fetch(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/reset-devices', options)
-                        });
                 });
+
+                this._refresh();
             },
 
             showProgress: function (message) {
@@ -317,12 +310,12 @@ limitations under the License.
                 this.hide = true;
             },
 
-            removeDevice: function(type, index) {
+            removeDevice: function (type, index) {
                 this.splice(type, index, 1);
                 this.hide = --this.deviceCount > 0;
             },
 
-            showToast: function(toastmsg) {
+            showToast: function (toastmsg) {
                 this.$.toast.text = toastmsg;
                 this.$.toast.open();
             },
@@ -342,17 +335,17 @@ limitations under the License.
                 };
 
                 return fetch(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/status', options)
-                    .then(function(response) {
+                    .then(function (response) {
                         return response.json();
-                    }).then(function(json) {
+                    }).then(function (json) {
                         const uid = json.uid;
                         delete json.uid;
                         for (const key in json) {
                             devices[key] = json[key];
                         }
                         console.log(devices);
-                        return app._handleRefresh(app, uid);
-                    });
+                        return this._handleRefresh(this, uid);
+                    }.bind(this));
             },
 
             _handleRefresh: function (app, uid) {
@@ -364,7 +357,7 @@ limitations under the License.
                         delete devices[id].properties.id;
                         devices[id].states.on = false;
                         devices[id].states.online = false;
-                        switch(devices[id].properties.type) {
+                        switch (devices[id].properties.type) {
                             case 'action.devices.types.LIGHT':
                                 app._addLight(null, devices[id]);
                                 break;
@@ -393,25 +386,13 @@ limitations under the License.
                             default:
                                 break;
                         }
-                        nextDeviceId = parseInt(id)+1;
+                        nextDeviceId = parseInt(id) + 1;
                     }
                 }
                 return app;
             },
 
-            _auth: function(){
-                const options = {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + AUTH_TOKEN
-                    }
-                };
-                return fetch(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/auth', options)
-                    .then(fetch(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/status', options));
-            },
-
-            _getNickname: function(nicknames, typeSize, id) {
+            _getNickname: function (nicknames, typeSize, id) {
                 if (nicknames && typeSize < nicknames.length) {
                     return nicknames[typeSize];
                 } else {
@@ -429,7 +410,7 @@ limitations under the License.
                     var lightId = getNextDeviceId();
                     this.push('lights', {
                         id: String(lightId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.LIGHT',
                             traits: [
                                 'action.devices.traits.OnOff',
@@ -439,7 +420,7 @@ limitations under the License.
                             name: {
                                 defaultNames: ['Smart Light'],
                                 name: 'Smart Light ' + lightId,
-                                nicknames: [ this._getNickname(nicknames, this.lights.length, lightId) ]
+                                nicknames: [this._getNickname(nicknames, this.lights.length, lightId)]
                             },
                             willReportState: false,
                             roomHint: '',
@@ -480,7 +461,7 @@ limitations under the License.
                     var lightId = getNextDeviceId();
                     this.push('lights', {
                         id: String(lightId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.LIGHT',
                             traits: [
                                 'action.devices.traits.OnOff',
@@ -494,7 +475,7 @@ limitations under the License.
                             name: {
                                 defaultNames: ['Smart Light'],
                                 name: 'Smart Light ' + lightId,
-                                nicknames: [ this._getNickname(nicknames, this.lights.length, lightId) ]
+                                nicknames: [this._getNickname(nicknames, this.lights.length, lightId)]
                             },
                             willReportState: false,
                             roomHint: '',
@@ -525,7 +506,7 @@ limitations under the License.
                 }
             },
 
-            _addThermostat: function(event, thermostat) {
+            _addThermostat: function (event, thermostat) {
                 this.hideNoDeviceMessage();
                 this.deviceCount++;
                 let nicknames = ['wall thermostat', 'upstairs thermostat'];
@@ -535,7 +516,7 @@ limitations under the License.
                     var thermostatId = getNextDeviceId();
                     this.push('thermostats', {
                         id: String(thermostatId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.THERMOSTAT',
                             traits: [
                                 'action.devices.traits.TemperatureSetting'
@@ -543,7 +524,7 @@ limitations under the License.
                             name: {
                                 defaultNames: ['Smart Thermostat'],
                                 name: 'Smart Thermostat ' + thermostatId,
-                                nicknames: [ this._getNickname(nicknames, this.thermostats.length, thermostatId) ]
+                                nicknames: [this._getNickname(nicknames, this.thermostats.length, thermostatId)]
                             },
                             willReportState: false,
                             roomHint: 'hallway',
@@ -575,7 +556,7 @@ limitations under the License.
                 }
             },
 
-            _addScene: function(event, scene) {
+            _addScene: function (event, scene) {
                 this.hideNoDeviceMessage();
                 this.deviceCount++;
                 if (scene && scene.hasOwnProperty("id")) {
@@ -584,7 +565,7 @@ limitations under the License.
                     var sceneId = getNextDeviceId();
                     this.push('scenes', {
                         id: String(sceneId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.SCENE',
                             traits: [
                                 'action.devices.traits.Scene'
@@ -592,13 +573,13 @@ limitations under the License.
                             name: {
                                 defaultNames: [],
                                 name: 'Smart Scene ' + sceneId,
-                                nicknames: [ this._getNickname(undefined, this.scenes.length, sceneId) ]
+                                nicknames: [this._getNickname(undefined, this.scenes.length, sceneId)]
                             },
                             willReportState: false,
                             attributes: {
                                 sceneReversible: true
                             },
-                             deviceInfo: {
+                            deviceInfo: {
                                 manufacturer: 'Smart Home Provider',
                                 model: 'g1339',
                                 swVersion: '1.0.31',
@@ -619,7 +600,7 @@ limitations under the License.
                 }
             },
 
-            _addCamera: function(event, camera) {
+            _addCamera: function (event, camera) {
                 this.hideNoDeviceMessage();
                 this.deviceCount++;
                 let nicknames = ['backyard camera', 'security camera'];
@@ -629,7 +610,7 @@ limitations under the License.
                     var cameraId = getNextDeviceId();
                     this.push('cameras', {
                         id: String(cameraId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.CAMERA',
                             traits: [
                                 'action.devices.traits.CameraStream'
@@ -643,7 +624,7 @@ limitations under the License.
                             attributes: {
                                 'cameraStreamSupportedProtocols': ["mp4", "hls"]
                             },
-                             deviceInfo: {
+                            deviceInfo: {
                                 manufacturer: 'Smart Home Provider',
                                 model: 'g1340',
                                 swVersion: '1.0.31',
@@ -674,7 +655,7 @@ limitations under the License.
                     var vacuumId = getNextDeviceId();
                     this.push('vacuums', {
                         id: String(vacuumId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.VACUUM',
                             traits: [
                                 'action.devices.traits.OnOff',
@@ -760,7 +741,7 @@ limitations under the License.
                     var washerId = getNextDeviceId();
                     this.push('washers', {
                         id: String(washerId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.WASHER',
                             traits: [
                                 'action.devices.traits.OnOff',
@@ -780,18 +761,19 @@ limitations under the License.
                                     {
                                         name: "load",
                                         name_values: [{
-                                            name_synonym:  [ "load", "size", "load size" ],
-                                            lang: "ENGLISH" }],
+                                            name_synonym: ["load", "size", "load size"],
+                                            lang: "ENGLISH"
+                                        }],
                                         settings: [{
                                             setting_name: "small",
                                             setting_values: [{
-                                                setting_synonym: [ "small", "half" ],
+                                                setting_synonym: ["small", "half"],
                                                 lang: "ENGLISH"
                                             }]
                                         }, {
                                             setting_name: "large",
                                             setting_values: [{
-                                                setting_synonym: [ "large", "full"],
+                                                setting_synonym: ["large", "full"],
                                                 lang: "ENGLISH"
                                             }]
                                         }],
@@ -800,15 +782,17 @@ limitations under the License.
                                 ],
                                 availableToggles: [
                                     {
-                                    name: "extra rinse",
-                                    name_values: [{
-                                        name_synonym: ["extra", "rinse"],
-                                        lang: "ENGLISH" }]
+                                        name: "extra rinse",
+                                        name_values: [{
+                                            name_synonym: ["extra", "rinse"],
+                                            lang: "ENGLISH"
+                                        }]
                                     }, {
-                                    name: "permanent press",
-                                    name_values: [{
-                                        name_synonym: ["permanent", "press"],
-                                        lang: "ENGLISH" }]
+                                        name: "permanent press",
+                                        name_values: [{
+                                            name_synonym: ["permanent", "press"],
+                                            lang: "ENGLISH"
+                                        }]
                                     },
                                 ],
                                 pausable: true
@@ -862,7 +846,7 @@ limitations under the License.
                     var refrigeratorId = getNextDeviceId();
                     this.push('refrigerators', {
                         id: String(refrigeratorId),
-                        properties : {
+                        properties: {
                             type: 'action.devices.types.REFRIGERATOR',
                             traits: [
                                 'action.devices.traits.OnOff',
@@ -872,14 +856,15 @@ limitations under the License.
                                 availableToggles: [{
                                     name: "quiet",
                                     name_values: [{
-                                        name_synonym: [ "quiet", "silent"],
-                                        lang: "en"}]
+                                        name_synonym: ["quiet", "silent"],
+                                        lang: "en"
+                                    }]
                                 }]
                             },
                             name: {
                                 defaultNames: ['Smart Fridge'],
                                 name: 'Smart Refrigerator ' + refrigeratorId,
-                                nicknames: [ this._getNickname(nicknames, this.refrigerators.length, refrigeratorId) ]
+                                nicknames: [this._getNickname(nicknames, this.refrigerators.length, refrigeratorId)]
                             },
                             willReportState: false,
                             roomHint: '',

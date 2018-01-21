@@ -35,12 +35,39 @@
  *   ...
  * }
  */
-
 const config = require('./config-provider');
+const admin = require('firebase-admin');
+
+admin.initializeApp({
+  credential: admin.credential.cert(config.firebaseAdmin)
+});
+
+const db = admin.firestore();
+
 const Data = {};
 Data[config.smartHomeUserId] = {};
 
 Data.version = 0;
+
+/**
+ * get firestore custom token
+ *
+ * @param uid
+ * @returns token
+ */
+Data.getFirestoreToken = function (uid) {
+  return new Promise((resolve, reject) => {
+    admin.auth().createCustomToken(uid)
+      .then(customToken => {
+        resolve(customToken);
+      })
+      .catch(error => {
+        console.log("Error creating custom token:", error);
+        reject();
+      });
+  });
+}
+
 
 /**
  * get a full status for everything stored for a user
@@ -67,8 +94,43 @@ Data.version = 0;
  */
 Data.getUid = function (uid) {
   // console.log('getUid', uid);
-  return Data[uid];
+  return new Promise((resolve, reject) => {
+    let devices = {};
+    const col = db.collection(uid);
+    col.get().then(querysnap => {
+      if (querysnap.empty) {
+        console.error("cannot get devices without first registering the user!");
+        resolve(devices);
+      } else {
+        querysnap.forEach(docsnap => {
+          devices[docsnap.id] = docsnap.data();
+        });
+        resolve(devices);
+      }
+    }).catch(error => console.log(error));
+  });
 };
+
+/**
+ * exist devices stored for a user
+ *
+ * @param uid
+ * @returns {boolean}
+ */
+Data.exist = function (uid) {
+  // console.log('exist', uid);
+  return new Promise((resolve, reject) => {
+    const col = db.collection(uid);
+    col.get().then(querysnap => {
+      if (querysnap.empty) {
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    }).catch(error => console.log(error));
+  });
+};
+
 
 /**
  * get current states for all devices stored for a user
@@ -86,25 +148,29 @@ Data.getUid = function (uid) {
  */
 Data.getStates = function (uid, deviceIds = undefined) {
   // console.log('getStates', uid);
-  let states = {};
-
-  if (!deviceIds) {
-    Object.keys(Data[uid]).forEach(function (deviceId) {
-      if (Data[uid].hasOwnProperty(deviceId)) {
-        states[deviceId] = Data[uid][deviceId].states;
-      }
-    });
-  } else {
-    for (let i = 0; i < deviceIds.length; i++) {
-      let deviceId = deviceIds[i];
-      if (Data[uid].hasOwnProperty(deviceId)) {
-        states[deviceId] = Data[uid][deviceId].states;
+  return new Promise((resolve, reject) => {
+    let states = {};
+    const col = db.collection(uid);
+    if (!deviceIds) {
+      col.get().then(querysnap => {
+        querysnap.forEach(docsnap => {
+          states[docsnap.id] = docsnap.get('states');
+        });
+        resolve(states);
+      }).catch(error => console.log(error));
+    } else {
+      for (let i = 0; i < deviceIds.length; i++) {
+        col.doc(deviceIds[i]).get().then(docsnap => {
+          if (docsnap.exists) {
+            states[docsnap.id] = docsnap.get('states');
+          }
+          if (i == deviceIds.length - 1) {
+            resolve(states);
+          }
+        }).catch(error => console.log(error));
       }
     }
-  }
-
-  return states;
-
+  });
 };
 
 /**
@@ -123,24 +189,29 @@ Data.getStates = function (uid, deviceIds = undefined) {
  */
 Data.getProperties = function (uid, deviceIds = undefined) {
   // console.log('getProperties', uid);
-  let properties = {};
-
-  if (!deviceIds) {
-    Object.keys(Data[uid]).forEach(function (deviceId) {
-      if (Data[uid].hasOwnProperty(deviceId)) {
-        properties[deviceId] = Data[uid][deviceId].properties;
-      }
-    });
-  } else {
-    for (let i = 0; i < deviceIds.length; i++) {
-      let deviceId = deviceIds[i];
-      if (Data[uid].hasOwnProperty(deviceId)) {
-        properties[deviceId] = Data[uid][deviceId].properties;
+  return new Promise((resolve, reject) => {
+    let properties = {};
+    const col = db.collection(uid);
+    if (!deviceIds) {
+      col.get().then(querysnap => {
+        querysnap.forEach(docsnap => {
+          properties[docsnap.id] = docsnap.get('properties');
+        });
+        resolve(properties);
+      }).catch(error => console.log(error));
+    } else {
+      for (let i = 0; i < deviceIds.length; i++) {
+        col.doc(deviceIds[i]).get().then(docsnap => {
+          if (docsnap.exists) {
+            properties[docsnap.id] = docsnap.get('properties');
+          }
+          if (i == deviceIds.length - 1) {
+            resolve(properties);
+          }
+        }).catch(error => console.log(error));
       }
     }
-  }
-
-  return properties;
+  });
 };
 
 /**
@@ -168,27 +239,29 @@ Data.getProperties = function (uid, deviceIds = undefined) {
  * }
  */
 Data.getStatus = function (uid, deviceIds = undefined) {
-  // return Data.getUid(uid);
-  if (!Data[uid]) {
-    console.error("cannot getStatus of devices without first registering the user!");
-    return;
-  }
-
-  // console.log('getStatus deviceIds', deviceIds);
-  if (!deviceIds || deviceIds == {} ||
-      (Object.keys(deviceIds).length === 0 && deviceIds.constructor === Object))
-    return Data.getUid(uid);
-
-  let devices = {};
-  for (let i = 0; i < deviceIds.length; i++) {
-    let curId = deviceIds[i];
-    if (!Data[uid][curId])
-      continue;
-    devices[curId] = Data[uid][curId];
-    // console.log('devices[curId]', devices[curId]);
-  }
-  // console.log('devices', devices);
-  return devices;
+  console.log('getStatus');
+  return new Promise((resolve, reject) => {
+    if (!deviceIds || deviceIds == {} ||
+      (Object.keys(deviceIds).length === 0 && deviceIds.constructor === Object)) {
+      Data.getUid(uid).
+        then(devices => {
+          resolve(devices);
+        });
+    } else {
+      let devices = {};
+      const col = db.collection(uid);
+      for (let i = 0; i < deviceIds.length; i++) {
+        col.doc(deviceIds[i].toString(10)).get().then(docsnap => {
+          if (docsnap.exists) {
+            devices[docsnap.id] = docsnap.data();
+          }
+          if (i == deviceIds.length - 1) {
+            resolve(devices);
+          }
+        }).catch(error => console.log(error));
+      }
+    }
+  });
 };
 
 /**
@@ -213,36 +286,26 @@ Data.getStatus = function (uid, deviceIds = undefined) {
  * }
  */
 Data.execDevice = function (uid, device) {
-  if (!Data[uid]) {
-    console.error("cannot register a device without first registering the user!");
-    return;
-  }
-  // console.log('execDevice', device);
-  if (!Data[uid][device.id])
-    Data[uid][device.id] = {
-      states: {},
-      properties: {}
-    };
-  if (device.hasOwnProperty('properties')) {
-    // update properties
-    Object.keys(device.properties).forEach(function (key) {
-      if (device.properties.hasOwnProperty(key)) {
-        // console.log('property ' + key, device.properties[key]);
-        Data[uid][device.id].properties[key] = device.properties[key];
-      }
-    });
-  }
-  if (device.hasOwnProperty('states')) {
-    // update states
-    Object.keys(device.states).forEach(function (key) {
-      if (device.states.hasOwnProperty(key)) {
-        // console.log('state ' + key, device.states[key]);
-        Data[uid][device.id].states[key] = device.states[key];
-      }
-    });
-  }
-  // console.log('execDevice after', Data[uid][device.id]);
-  Data.version++;
+  // console.log('execDevice');
+  return new Promise((resolve, reject) => {
+
+    Data.exist(uid).
+      then(exist => {
+        if (!exist && uid != config.smartHomeUserId) {
+          console.error("cannot register a device without first registering the user!");
+          return resolve();
+        }
+        const col = db.collection(uid);
+        const setopt = { merge: true };
+        const setdata = {
+          properties: device.properties || {},
+          states: device.states || {}
+        };
+        col.doc(device.id).set(setdata, setopt).then(res => {
+          resolve(res);
+        }).catch(error => console.log(error));
+      }).catch(error => console.log(error));
+  });
 };
 
 /**
@@ -253,21 +316,35 @@ Data.execDevice = function (uid, device) {
  */
 Data.registerDevice = function (uid, device) {
   // wrapper for exec, since they do the same thing
-  Data.execDevice(uid, device);
+  return Data.execDevice(uid, device);
 };
 
 /**
  * resets user account, deleting all devices on page refresh
  */
 Data.resetDevices = function (uid) {
+  // console.log('resetDevices');
   // Deletes all devices for the user.
-  if (!Data[uid]) {
-    console.error("cannot remove a device without first registering the user!");
-    return;
-  }
-  console.info("Deleting all devices for " + uid);
-  Data[uid] = {};
-  Data.version = 0;
+  return new Promise((resolve, reject) => {
+    Data.exist(uid).
+      then(exist => {
+        if (!exist || uid != config.smartHomeUserId) {
+          console.error("cannot remove a device without first registering the user!");
+          return resolve();
+        }
+        const col = db.collection(uid);
+        col.get().then(querysnap => {
+          const docs = querysnap.docs;
+          for (let i = 0; i < docs.length; i++) {
+            docs[i].ref.delete().then(() => {
+              if (i == docs.length - 1) {
+                resolve();
+              }
+            });
+          }
+        }).catch(error => console.log(error));
+      }).catch(error => console.log(error));
+  });
 }
 
 /**
@@ -277,13 +354,22 @@ Data.resetDevices = function (uid) {
  * @param device
  */
 Data.removeDevice = function (uid, device) {
-  if (!Data[uid]) {
-    console.error("cannot remove a device without first registering the user!");
-    return;
-  }
-  console.info("Deleting device " + device.id + " for " + uid);
-  delete Data[uid][device.id];
-  Data.version++;
+  // console.log('removeDevice');
+  return new Promise((resolve, reject) => {
+
+    Data.exist(uid).
+      then(exist => {
+        if (!exist || uid != config.smartHomeUserId) {
+          console.error("cannot remove a device without first registering the user!");
+          return resolve();
+        }
+
+        const col = db.collection(uid);
+        col.doc(device.id).delete().then(() => {
+          console.info("Deleted device " + device.id + " for " + uid);
+        }).catch(error => console.log(error));
+      });
+  });
 };
 
 /**
@@ -294,7 +380,16 @@ Data.removeDevice = function (uid, device) {
  * @returns {boolean}
  */
 Data.isValidAuth = function (uid, authToken) {
-  return (Data.getUid(uid));
+  return new Promise((resolve, reject) => {
+    Data.exist(uid).
+      then(exist => {
+        if (exist || config.smartHomeUserId == uid) {
+          resolve();
+        } else {
+          reject("Invalid auth " + authToken + " for user " + uid);
+        }
+      });
+  });
 
   // FIXME - reenable below once a more stable auth has been put in place
   // if (!Data.getUid(uid) || !Auth[uid])
@@ -311,3 +406,4 @@ exports.execDevice = Data.execDevice;
 exports.registerDevice = Data.registerDevice;
 exports.resetDevices = Data.resetDevices;
 exports.removeDevice = Data.removeDevice;
+exports.getFirestoreToken = Data.getFirestoreToken;
