@@ -48,7 +48,6 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: false }
 }));
-const deviceConnections = {};
 const requestSyncEndpoint = 'https://homegraph.googleapis.com/v1/devices:requestSync?key=';
 
 /**
@@ -80,12 +79,12 @@ app.post('/smart-home-api/register-device', function (request, response) {
   authProvider.getUid(authToken).then(_uid => {
     uid = _uid;
     return datastore.isValidAuth(uid, authToken)
-  }).then( () => {
+  }).then(() => {
     return datastore.registerDevice(uid, device);
-  }).then( () => {
+  }).then(() => {
     // Get registered device
     return datastore.getStatus(uid, [device.id]);
-  }).then( _device => {
+  }).then(_device => {
     if (!_device || !_device[device.id]) {
       response.status(401).set({
         'Access-Control-Allow-Origin': '*',
@@ -125,13 +124,13 @@ app.post('/smart-home-api/reset-devices', function (request, response) {
   authProvider.getUid(authToken).then(_uid => {
     uid = _uid;
     return datastore.isValidAuth(uid, authToken)
-  }).then( () => {
+  }).then(() => {
     return datastore.resetDevices(uid);
-  }).then( () => {
+  }).then(() => {
     // Resync for the user
     app.requestSync(authToken, uid);
     return datastore.getUid(uid);
-  }).then( devices => {
+  }).then(devices => {
     // otherwise, all good!
     response.status(200)
       .set({
@@ -162,12 +161,12 @@ app.post('/smart-home-api/remove-device', function (request, response) {
   authProvider.getUid(authToken).then(_uid => {
     uid = _uid;
     return datastore.isValidAuth(uid, authToken)
-  }).then( () => {
+  }).then(() => {
     return datastore.removeDevice(uid, device);
-  }).then( () => {
+  }).then(() => {
     // Get registered device
     return datastore.getStatus(uid, [device.id]);
-  }).then( _device => {
+  }).then(_device => {
     if (_device[device.id]) {
       response.status(500).set({
         'Access-Control-Allow-Origin': '*',
@@ -181,7 +180,7 @@ app.post('/smart-home-api/remove-device', function (request, response) {
 
     // otherwise, all good!
     return datastore.getUid(uid);
-  }).then( devices => {
+  }).then(devices => {
     response.status(200)
       .set({
         'Access-Control-Allow-Origin': '*',
@@ -221,9 +220,9 @@ app.post('/smart-home-api/exec', function (request, response) {
   authProvider.getUid(authToken).then(_uid => {
     uid = _uid;
     return datastore.isValidAuth(uid, authToken)
-  }).then( () => {
+  }).then(() => {
     return app.smartHomeExec(uid, device);
-  }).then( _device => {
+  }).then(_device => {
     if (!_device || !_device[device.id]) {
       response.status(500).set({
         'Access-Control-Allow-Origin': '*',
@@ -307,12 +306,12 @@ app.post('/smart-home-api/status', function (request, response) {
   let uid;
   let device = request.body;
 
-  authProvider.getUid(authToken).then( _uid => {
+  authProvider.getUid(authToken).then(_uid => {
     uid = _uid;
     return datastore.isValidAuth(uid, authToken)
-  }).then( () => {
+  }).then(() => {
     return app.smartHomeQuery(uid, device);
-  }).then( devices => {
+  }).then(devices => {
     if (!devices) {
       response.status(500).set({
         'Access-Control-Allow-Origin': '*',
@@ -338,29 +337,6 @@ app.post('/smart-home-api/status', function (request, response) {
   });
 });
 
-/**
- * Creates an Server Send Event source for a device.
- * Called from a device.
- */
-app.get('/smart-home-api/device-connection/:deviceId', function (request, response) {
-  const deviceId = request.params.deviceId;
-  // console.log('get /smart-home-api/device-connection/' + deviceId);
-  deviceConnections[deviceId] = response;
-
-  response.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  });
-  response.connection.setTimeout(0);
-  response.on('close', function () {
-    delete deviceConnections[deviceId];
-  });
-});
-
 // frontend UI
 app.set('jsonp callback name', 'cid');
 app.get('/getauthcode', function (req, resp) {
@@ -375,13 +351,21 @@ app.get('/getauthcode', function (req, resp) {
       '})();' +
       '');// redirect to google login
   } else {
-    resp.status(200).send('' +
-      'var AUTH_TOKEN = "' + req.session.user.tokens[0] + '";' +
-      'var USERNAME = "' + req.session.user.name + '";' +
-      'var FIREBASE_API_KEY = "' + config.firebaseApiKey + '";' +
-      'var FIREBASE_AUTH_DOMAIN = "' + config.firebaseAuthDomain + '";' +
-      'var CLOUD_FIRESTORE_PROJECT_ID = "' + config.cloudFirestoreProjectId + '";' +
-      '');
+    authProvider.getUid(req.session.user.tokens[0]).then(_uid => {
+      return datastore.getFirestoreToken(_uid);
+    }).then(customToken => {
+      resp.status(200).send('' +
+        'var AUTH_TOKEN = "' + req.session.user.tokens[0] + '";' +
+        'var USERNAME = "' + req.session.user.name + '";' +
+        'var FIREBASE_API_KEY = "' + config.firebaseApiKey + '";' +
+        'var FIREBASE_AUTH_DOMAIN = "' + config.firebaseAuthDomain + '";' +
+        'var CLOUD_FIRESTORE_PROJECT_ID = "' + config.cloudFirestoreProjectId + '";' +
+        'var FIRESTORE_CUSTOMTOKEN = "' + customToken + '";' +
+        '');
+    }).catch(error => {
+      console.error('getFirestoreToken:', error);
+      resp.status(500).send('auth error');
+    });
   }
 });
 app.use('/frontend', express.static(__dirname + '/../frontend'));
@@ -426,35 +410,14 @@ app.smartHomeQueryStates = function (uid, deviceList) {
 
 app.smartHomeExec = function (uid, device) {
   // console.log('smartHomeExec', device);
-  datastore.execDevice(uid, device);
-  let executedDevice = datastore.getStatus(uid, [device.id]);
-  console.log('smartHomeExec executedDevice', JSON.stringify(executedDevice));
-  return executedDevice;
-};
-
-app.changeState = function (command) {
-  return new Promise(function (resolve, reject) {
-    if (command.type == 'change') {
-      for (let deviceId in command.state) {
-        const deviceChanges = command.state[deviceId];
-        // console.log('>>> changeState: deviceChanges', deviceChanges);
-
-        const connection = deviceConnections[deviceId];
-        if (!connection) {
-          // console.log('>>> changeState: connection not found for', deviceId);
-          return reject(new Error('Device ' + deviceId + ' unknown to Amce Cloud'));
-        }
-
-        // console.log('>>> sending changes to device', deviceId, deviceChanges);
-        connection.write('event: change\n');
-        connection.write('data: ' + JSON.stringify(deviceChanges) + '\n\n');
-      }
-      resolve();
-    } else if (command.type == 'delete') {
-      reject(new Error('Device deletion unimplemented'));
-    } else {
-      reject(new Error('Unknown change type "' + command.type + '"'));
-    }
+  return new Promise((resolve, reject) => {
+    datastore.execDevice(uid, device)
+      .then(() => {
+        return datastore.getStatus(uid, [device.id]);
+      }).then(executedDevice => {
+        console.log('smartHomeExec executedDevice', JSON.stringify(executedDevice));
+        resolve(executedDevice);
+      });
   });
 };
 

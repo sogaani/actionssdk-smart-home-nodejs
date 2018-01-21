@@ -38,20 +38,36 @@
 const config = require('./config-provider');
 const admin = require('firebase-admin');
 
-if (process.env.GCLOUD_PROJECT) {
-  const functions = require('firebase-functions');
-  admin.initializeApp(functions.config().firebase);
-} else {
-  admin.initializeApp({
-    credential: admin.credential.cert(config.firebaseAdmin)
-  });
-}
+admin.initializeApp({
+  credential: admin.credential.cert(config.firebaseAdmin)
+});
+
 const db = admin.firestore();
 
 const Data = {};
 Data[config.smartHomeUserId] = {};
 
 Data.version = 0;
+
+/**
+ * get firestore custom token
+ *
+ * @param uid
+ * @returns token
+ */
+Data.getFirestoreToken = function (uid) {
+  return new Promise((resolve, reject) => {
+    admin.auth().createCustomToken(uid)
+      .then(customToken => {
+        resolve(customToken);
+      })
+      .catch(error => {
+        console.log("Error creating custom token:", error);
+        reject();
+      });
+  });
+}
+
 
 /**
  * get a full status for everything stored for a user
@@ -223,7 +239,7 @@ Data.getProperties = function (uid, deviceIds = undefined) {
  * }
  */
 Data.getStatus = function (uid, deviceIds = undefined) {
-  // console.log('getStatus');
+  console.log('getStatus');
   return new Promise((resolve, reject) => {
     if (!deviceIds || deviceIds == {} ||
       (Object.keys(deviceIds).length === 0 && deviceIds.constructor === Object)) {
@@ -282,11 +298,10 @@ Data.execDevice = function (uid, device) {
         const col = db.collection(uid);
         const setopt = { merge: true };
         const setdata = {
-          properties: device.properties,
-          states: device.states
+          properties: device.properties || {},
+          states: device.states || {}
         };
         col.doc(device.id).set(setdata, setopt).then(res => {
-          console.log(res);
           resolve(res);
         }).catch(error => console.log(error));
       }).catch(error => console.log(error));
@@ -301,7 +316,7 @@ Data.execDevice = function (uid, device) {
  */
 Data.registerDevice = function (uid, device) {
   // wrapper for exec, since they do the same thing
-  Data.execDevice(uid, device);
+  return Data.execDevice(uid, device);
 };
 
 /**
@@ -391,3 +406,4 @@ exports.execDevice = Data.execDevice;
 exports.registerDevice = Data.registerDevice;
 exports.resetDevices = Data.resetDevices;
 exports.removeDevice = Data.removeDevice;
+exports.getFirestoreToken = Data.getFirestoreToken;
