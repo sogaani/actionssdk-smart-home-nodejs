@@ -41,7 +41,7 @@ function registerAgent(app) {
     console.log('post /smarthome', reqdata);
 
     let authToken = authProvider.getAccessToken(request);
-    authProvider.getUid(authToken).then((uid) => {
+    authProvider.getUid(authToken).then(uid => {
       if (!reqdata.inputs) {
         response.status(401).set({
           'Access-Control-Allow-Origin': '*',
@@ -264,33 +264,37 @@ function registerAgent(app) {
    */
   function sync(data, response) {
     console.log('sync', JSON.stringify(data));
-    let devices = app.smartHomePropertiesSync(data.uid);
-    if (!devices) {
-      response.status(500).set({
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({ error: "failed" });
-      return;
-    }
-    let deviceList = [];
-    Object.keys(devices).forEach(function (key) {
-      if (devices.hasOwnProperty(key) && devices[key]) {
-        console.log("Getting device information for id '" + key + "'");
-        let device = devices[key];
-        device.id = key;
-        deviceList.push(device);
-      }
+    return new Promise((resolve, reject) => {
+      app.smartHomePropertiesSync(data.uid).then(devices => {
+        if (!devices) {
+          response.status(500).set({
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }).json({ error: "failed" });
+          resolve();
+          return;
+        }
+        let deviceList = [];
+        Object.keys(devices).forEach(function (key) {
+          if (devices.hasOwnProperty(key) && devices[key]) {
+            console.log("Getting device information for id '" + key + "'");
+            let device = devices[key];
+            device.id = key;
+            deviceList.push(device);
+          }
+        });
+        let deviceProps = {
+          requestId: data.requestId,
+          payload: {
+            agentUserId: data.uid,
+            devices: deviceList
+          }
+        };
+        console.log('sync response', JSON.stringify(deviceProps));
+        response.status(200).json(deviceProps);
+        resolve(deviceProps);
+      });
     });
-    let deviceProps = {
-      requestId: data.requestId,
-      payload: {
-        agentUserId: data.uid,
-        devices: deviceList
-      }
-    };
-    console.log('sync response', JSON.stringify(deviceProps));
-    response.status(200).json(deviceProps);
-    return deviceProps;
   }
 
   /**
@@ -339,23 +343,27 @@ function registerAgent(app) {
     console.log('query', JSON.stringify(data));
     let deviceIds = getDeviceIds(data.devices);
 
-    let devices = app.smartHomeQueryStates(data.uid, deviceIds);
-    if (!devices) {
-      response.status(500).set({
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({ error: "failed" });
-      return;
-    }
-    let deviceStates = {
-      requestId: data.requestId,
-      payload: {
-        devices: devices
-      }
-    };
-    console.log('query response', JSON.stringify(deviceStates));
-    response.status(200).json(deviceStates);
-    return deviceStates;
+    return new Promise((resolve, reject) => {
+      app.smartHomeQueryStates(data.uid, deviceIds).then(devices => {
+        if (!devices) {
+          response.status(500).set({
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }).json({ error: "failed" });
+          resolve();
+          return;
+        }
+        let deviceStates = {
+          requestId: data.requestId,
+          payload: {
+            devices: devices
+          }
+        };
+        console.log('query response', JSON.stringify(deviceStates));
+        response.status(200).json(deviceStates);
+        resolve(deviceStates);
+      });
+    });
   }
 
   /**
@@ -443,32 +451,48 @@ function registerAgent(app) {
    */
   function exec(data, response) {
     console.log('exec', JSON.stringify(data));
-    let respCommands = [];
-    for (let i = 0; i < data.commands.length; i++) {
-      let curCommand = data.commands[i];
-      for (let j = 0; j < curCommand.execution.length; j++) {
-        let curExec = curCommand.execution[j];
-        let devices = curCommand.devices;
-        for (let k = 0; k < devices.length; k++) {
-          let executionResponse = execDevice(data.uid, curExec, devices[k]);
-          console.log("Device exec response", JSON.stringify(executionResponse));
-          respCommands.push({
-            ids: [devices[k].id],
-            status: executionResponse.status,
-            errorCode: executionResponse.errorCode ? executionResponse.errorCode : undefined
-          });
+
+    new Promise((resolve, reject) => {
+      let respCommands = [];
+      let promises = [];
+      for (let i = 0; i < data.commands.length; i++) {
+        let curCommand = data.commands[i];
+        for (let j = 0; j < curCommand.execution.length; j++) {
+          let curExec = curCommand.execution[j];
+          let devices = curCommand.devices;
+          for (let k = 0; k < devices.length; k++) {
+            promises.push(new Promise((resolve, reject) => {
+              execDevice(data.uid, curExec, devices[k]).then(executionResponse => {
+                console.log("Device exec response", JSON.stringify(executionResponse));
+                respCommands.push({
+                  ids: [devices[k].id],
+                  status: "SUCCESS",
+                  errorCode: undefined
+                });
+                resolve();
+              }).catch(error => {
+                respCommands.push({
+                  ids: [devices[k].id],
+                  status: "ERROR",
+                  errorCode: error
+                });
+              });
+            }));
+          }
         }
       }
-    }
-    let resBody = {
-      requestId: data.requestId,
-      payload: {
-        commands: respCommands
-      }
-    };
-    console.log('exec response', JSON.stringify(resBody));
-    response.status(200).json(resBody);
-    return resBody;
+      Promise.all(promises).then(results => {
+        let resBody = {
+          requestId: data.requestId,
+          payload: {
+            commands: respCommands
+          }
+        };
+        console.log('exec response', JSON.stringify(resBody));
+        response.status(200).json(resBody);
+        resolve(resBody);
+      });
+    });
   }
 
   registerAgent.exec = exec;
@@ -516,34 +540,38 @@ function registerAgent(app) {
       status: "SUCCESS",
       states: {}
     };
-    let execDevice = app.smartHomeExec(uid, curDevice);
-    console.info("execDevice", JSON.stringify(execDevice[device.id]));
-    // Check whether the device exists or whether it exists and it is disconnected.
-    if (!execDevice || !execDevice[device.id].states.online) {
-      console.warn("The device you want to control is offline");
-      return { status: "ERROR", errorCode: "deviceOffline" };
-    }
-    let deviceCommand = {
-      type: 'change',
-      state: {}
-    };
-    // TODO - add error and debug to response
 
-    deviceCommand.state[curDevice.id] = execDevice[curDevice.id].states;
-    app.changeState(deviceCommand);
-
-    execDevice = execDevice[curDevice.id];
-
-    payLoadDevice.states = execDevice.states;
-
-    Object.keys(command.params).forEach(function (key) {
-      if (command.params.hasOwnProperty(key)) {
-        if (payLoadDevice.states[key] != command.params[key]) {
-          return { status: "ERROR", errorCode: "notSupported" };
+    return new Promise((resolve, reject) => {
+      app.smartHomeExec(uid, curDevice).then(execDevice => {
+        console.info("execDevice", JSON.stringify(execDevice[device.id]));
+        // Check whether the device exists or whether it exists and it is disconnected.
+        if (!execDevice || !execDevice[device.id].states.online) {
+          console.warn("The device you want to control is offline");
+          reject("deviceOffline");
         }
-      }
+        let deviceCommand = {
+          type: 'change',
+          state: {}
+        };
+        // TODO - add error and debug to response
+
+        deviceCommand.state[curDevice.id] = execDevice[curDevice.id].states;
+        app.changeState(deviceCommand);
+
+        execDevice = execDevice[curDevice.id];
+
+        payLoadDevice.states = execDevice.states;
+
+        Object.keys(command.params).forEach(function (key) {
+          if (command.params.hasOwnProperty(key)) {
+            if (payLoadDevice.states[key] != command.params[key]) {
+              reject("notSupported");
+            }
+          }
+        });
+        resolve("SUCCESS");
+      });
     });
-    return { status: "SUCCESS" };
   }
 }
 

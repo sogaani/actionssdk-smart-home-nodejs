@@ -22,7 +22,9 @@
     "paper-toggle-button": "PolymerElements/paper-toggle-button#~2.0.0",
     "paper-toast": "PolymerElements/paper-toast#~2.0.0",
     "paper-dialog": "PolymerElements/paper-dialog#~2.0.1",
-    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0"
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "firebase-firestore": "https://www.gstatic.com/firebasejs/4.9.0/firebase-firestore.js",
+    "firebase": "^4.9.0"
   },
   "devDependencies": {
     "web-component-tester": "^6.0.0"
