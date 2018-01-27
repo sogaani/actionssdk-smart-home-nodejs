@@ -13,7 +13,6 @@
 
 const fetch = require('node-fetch');
 const config = require('./cloud/config-provider');
-const datastore = require('./cloud/datastore');
 const authProvider = require('./cloud/auth-provider');
 
 function registerAgent(app) {
@@ -170,7 +169,12 @@ function registerAgent(app) {
       response.status(403).set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      }).json({ error: "invalid auth" });
+      }).json({
+        requestId: reqdata.requestId,
+        payload: {
+          errorCode: "authExpired"
+        }
+      });
       return;
     });
   });
@@ -462,11 +466,11 @@ function registerAgent(app) {
           let devices = curCommand.devices;
           for (let k = 0; k < devices.length; k++) {
             promises.push(new Promise((resolve, reject) => {
-              execDevice(data.uid, curExec, devices[k]).then(executionResponse => {
-                console.log("Device exec response", JSON.stringify(executionResponse));
+              execDevice(data.uid, curExec, devices[k]).then(() => {
                 respCommands.push({
                   ids: [devices[k].id],
                   status: "SUCCESS",
+                  states: curExec.params,
                   errorCode: undefined
                 });
                 resolve();
@@ -476,6 +480,7 @@ function registerAgent(app) {
                   status: "ERROR",
                   errorCode: error
                 });
+                resolve();
               });
             }));
           }
@@ -526,50 +531,13 @@ function registerAgent(app) {
    * }
    */
   function execDevice(uid, command, device) {
-    let curDevice = {
-      id: device.id,
-      states: {}
-    };
-    Object.keys(command.params).forEach(function (key) {
-      if (command.params.hasOwnProperty(key)) {
-        curDevice.states[key] = command.params[key];
-      }
-    });
-    let payLoadDevice = {
-      ids: [curDevice.id],
-      status: "SUCCESS",
-      states: {}
-    };
-
     return new Promise((resolve, reject) => {
-      app.smartHomeExec(uid, curDevice).then(execDevice => {
-        console.info("execDevice", JSON.stringify(execDevice[device.id]));
-        // Check whether the device exists or whether it exists and it is disconnected.
-        if (!execDevice || !execDevice[device.id].states.online) {
-          console.warn("The device you want to control is offline");
-          reject("deviceOffline");
-        }
-        let deviceCommand = {
-          type: 'change',
-          state: {}
-        };
-        // TODO - add error and debug to response
+      app.smartHomeExecCommand(uid, command, device).then(() => {
+        // TODO - check reject("notSupported");
+        // TODO - check reject("deviceOffline");
 
-        deviceCommand.state[curDevice.id] = execDevice[curDevice.id].states;
-
-        execDevice = execDevice[curDevice.id];
-
-        payLoadDevice.states = execDevice.states;
-
-        Object.keys(command.params).forEach(function (key) {
-          if (command.params.hasOwnProperty(key)) {
-            if (payLoadDevice.states[key] != command.params[key]) {
-              reject("notSupported");
-            }
-          }
-        });
         resolve("SUCCESS");
-      });
+      }).catch(error => reject(error));
     });
   }
 }

@@ -26,7 +26,8 @@
   "firebase-functions": "^0.8.1",
   "morgan": "^1.7.0",
   "ngrok": "^2.2.5",
-  "node-fetch": "^1.6.3"
+  "node-fetch": "^1.6.3",
+  "broadlinkjs-rm": "github:sogaani/broadlinkjs-rm"
  },
  "devDependencies": {
   "cpx": "^1.5.0",

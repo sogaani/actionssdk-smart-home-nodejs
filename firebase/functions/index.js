@@ -22,3 +22,13 @@ exports.smarthome = functions.https.onRequest((req, res) => {
 
     return cloud.app(req, res);
 });
+
+exports.create = functions.firestore.document('{userId}/{deviceId}')
+    .onCreate(event => {
+        return cloud.app.requestSync(null, event.params.userId);
+    });
+
+exports.update = functions.firestore.document('{userId}/{deviceId}')
+    .onUpdate(event => {
+        return cloud.app.requestSync(null, event.params.userId);
+    });

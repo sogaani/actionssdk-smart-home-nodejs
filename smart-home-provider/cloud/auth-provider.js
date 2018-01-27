@@ -22,6 +22,8 @@ const config = require('./config-provider.js');
 const util = require('util');
 const session = require('express-session');
 const fetch = require('node-fetch');
+const https = require('https');
+const getProfileAgent = new https.Agent({ keepAlive: true });
 
 Auth.getAccessToken = function (request) {
   return request.headers.authorization ? request.headers.authorization.split(' ')[1] : null;
@@ -30,22 +32,38 @@ Auth.getAccessToken = function (request) {
 Auth.getProfile = function (token) {
   console.info(token);
   const options = {
-    method: 'GET'
+    method: 'GET',
+    agent: getProfileAgent
   };
-  return fetch(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token}`, options).then(res => res.json())
+  return fetch(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token}`, options)
 }
 
 Auth.getUid = function (token) {
   return new Promise(function (resolve, reject) {
-    Auth.getProfile(token).
-      then(info => { console.info(info); resolve(info.id); });
+    Auth.getProfile(token)
+      .then(res => {
+        if (!res.ok) {
+          return Promise.reject();
+        } else {
+          return res.json()
+        }
+      })
+      .then(info => { console.info(info); resolve(info.id); })
+      .catch(error => { console.info(error); reject(); });
   });
 }
 
 Auth.getUsername = function (token) {
   return new Promise(function (resolve, reject) {
-    Auth.getProfile(token).
-      then(info => { console.info(info); resolve(info.name); });
+    Auth.getProfile(token)
+      .then(res => {
+        if (!res.ok) {
+          return Promise.reject();
+        }
+        return res.json()
+      })
+      .then(info => { console.info(info); resolve(info.name); })
+      .catch(error => { console.info(error); reject(); });
   });
 }
 
