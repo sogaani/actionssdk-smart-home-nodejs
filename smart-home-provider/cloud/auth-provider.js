@@ -23,7 +23,7 @@ const util = require('util');
 const session = require('express-session');
 const fetch = require('node-fetch');
 const https = require('https');
-const getProfileAgent = new https.Agent({ keepAlive: true });
+let getProfileAgent = new https.Agent({ keepAlive: true });
 
 const Userinfo = {};
 let InfoNum = 0;
@@ -74,6 +74,7 @@ Auth.getProfile = function (token) {
             getProfileAgent = new https.Agent({ keepAlive: true });
             // retry
             get();
+            return;
           }
           reject(error);
         });

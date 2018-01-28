@@ -145,7 +145,7 @@ app.smartHomeExec = function (uid, device) {
 };
 
 const https = require('https');
-const requestSyncAgent = new https.Agent({ keepAlive: true });
+let requestSyncAgent = new https.Agent({ keepAlive: true });
 
 app.requestSync = function (authToken, uid) {
   // REQUEST_SYNC
@@ -177,6 +177,7 @@ app.requestSync = function (authToken, uid) {
             requestSyncAgent = new https.Agent({ keepAlive: true });
             // retry
             get();
+            return;
           }
           reject(error)
         });
