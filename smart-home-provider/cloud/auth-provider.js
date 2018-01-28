@@ -25,6 +25,9 @@ const fetch = require('node-fetch');
 const https = require('https');
 const getProfileAgent = new https.Agent({ keepAlive: true });
 
+const Userinfo = {};
+let InfoNum = 0;
+
 Auth.getAccessToken = function (request) {
   return request.headers.authorization ? request.headers.authorization.split(' ')[1] : null;
 };
@@ -35,20 +38,54 @@ Auth.getProfile = function (token) {
     method: 'GET',
     agent: getProfileAgent
   };
-  return fetch(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token}`, options)
+
+  return new Promise(function (resolve, reject) {
+    if (Userinfo[token]) {
+      resolve(Userinfo[token]);
+      return;
+    }
+
+    if (InfoNum > 50) {
+      for (var key in Userinfo) {
+        delete Userinfo[key];
+      }
+      InfoNum = 0;
+    }
+
+    get = function () {
+      fetch(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token}`, options)
+        .then(res => {
+          if (!res.ok) {
+            return Promise.reject();
+          } else {
+            return res.json()
+          }
+        })
+        .then(info => {
+          console.info(info);
+          Userinfo[token] = info;
+          InfoNum++;
+          resolve(info);
+        })
+        .catch(error => {
+          if (error && error.code == 'ECONNRESET') {
+            console.log(error);
+            getProfileAgent.destroy();
+            getProfileAgent = new https.Agent({ keepAlive: true });
+            // retry
+            get();
+          }
+          reject(error);
+        });
+    };
+    get();
+  });
 }
 
 Auth.getUid = function (token) {
   return new Promise(function (resolve, reject) {
     Auth.getProfile(token)
-      .then(res => {
-        if (!res.ok) {
-          return Promise.reject();
-        } else {
-          return res.json()
-        }
-      })
-      .then(info => { console.info(info); resolve(info.id); })
+      .then(info => { resolve(info.id); })
       .catch(error => { console.info(error); reject(); });
   });
 }
@@ -56,12 +93,6 @@ Auth.getUid = function (token) {
 Auth.getUsername = function (token) {
   return new Promise(function (resolve, reject) {
     Auth.getProfile(token)
-      .then(res => {
-        if (!res.ok) {
-          return Promise.reject();
-        }
-        return res.json()
-      })
       .then(info => { console.info(info); resolve(info.name); })
       .catch(error => { console.info(error); reject(); });
   });
