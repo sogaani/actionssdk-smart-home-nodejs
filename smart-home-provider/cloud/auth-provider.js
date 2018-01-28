@@ -67,6 +67,7 @@ Auth.getUsername = function (token) {
   });
 }
 
+
 Auth.registerAuth = function (app) {
   /**
    * expecting something like the following:
@@ -77,6 +78,40 @@ Auth.registerAuth = function (app) {
    *   &state=STATE_STRING - A bookkeeping value that is passed back to Google unchanged in the result
    *   &response_type=code - The string code
    */
+
+  app.get('/oauth', function (req, res) {
+    let client_id = req.query.client_id;
+    let redirect_uri = req.query.redirect_uri;
+    let state = req.query.state;
+    let response_type = req.query.response_type;
+    let authCode = req.query.code;
+    let scope = req.query.scope;
+
+    if ('code' != response_type)
+      return res.status(500).send('response_type ' + response_type + ' must equal "code"');
+
+    if (config.smartHomeProviderGoogleClientId != client_id)
+      return res.status(500).send('client_id ' + client_id + ' invalid');
+
+    // if you have an authcode use that
+    if (authCode) {
+      return res.redirect(util.format('%s?code=%s&state=%s',
+        redirect_uri, authCode, state
+      ));
+    }
+
+    let user = req.session.user;
+    // Redirect anonymous users to google login page.
+    if (!user) {
+      return res.redirect(util.format(
+        'https://accounts.google.com/o/oauth2/v2/auth?' +
+        'client_id=%s&redirect_uri=%s&response_type=%s&state=%s&scope=%s' +
+        '&approval_prompt=force&access_type=offline',
+        client_id, encodeURIComponent(redirect_uri), response_type, state, scope));
+    }
+
+    return res.status(400).send('something went wrong');
+  });
 
   // get token.
   app.get('/login', function (req, res) {

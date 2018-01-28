@@ -112,7 +112,7 @@ app.get('/', function (req, resp) {
             `?client_id=${config.smartHomeProviderGoogleClientId}` +
             `&redirect_uri=http://localhost:${appPort}/login` +
             '&response_type=code' +
-            '&scope=https://www.googleapis.com/auth/cloud-platform+profile' +
+            '&scope=https://www.googleapis.com/auth/drive+profile' +
             '&approval_prompt=force' +
             '&access_type=offline');
         /*

@@ -110,7 +110,8 @@ class SmartThermostat extends SmartDevice {
         }
 
         if ('thermostatMode' in changes || temp) {
-            switch (changes.thermostatMode) {
+            const mode = changes.thermostatMode || this.device.states.thermostatMode
+            switch (mode) {
                 case 'on':
                     temp = temp || this.customData.prevTemp;
                     const _command = {
