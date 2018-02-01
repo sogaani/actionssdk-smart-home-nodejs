@@ -461,29 +461,37 @@ function registerAgent(app) {
       let promises = [];
       for (let i = 0; i < data.commands.length; i++) {
         let curCommand = data.commands[i];
-        for (let j = 0; j < curCommand.execution.length; j++) {
-          let curExec = curCommand.execution[j];
-          let devices = curCommand.devices;
-          for (let k = 0; k < devices.length; k++) {
-            promises.push(new Promise((resolve, reject) => {
-              execDevice(data.uid, curExec, devices[k]).then(() => {
-                respCommands.push({
-                  ids: [devices[k].id],
-                  status: "SUCCESS",
-                  states: curExec.params,
-                  errorCode: undefined
-                });
-                resolve();
-              }).catch(error => {
-                respCommands.push({
-                  ids: [devices[k].id],
-                  status: "ERROR",
-                  errorCode: error
-                });
-                resolve();
-              });
-            }));
+        let devices = curCommand.devices;
+        for (let k = 0; k < devices.length; k++) {
+          let devExec = [];
+          let devStates = {};
+          for (let j = 0; j < curCommand.execution.length; j++) {
+            const curExec = curCommand.execution[j]
+            devExec.push(curExec);
+            devStates = Object.assign(devStates, curExec.params);
           }
+          const command = {
+            execution: devExec,
+            states: devStates
+          };
+          promises.push(new Promise((resolve, reject) => {
+            execDevice(data.uid, command, devices[k]).then(() => {
+              respCommands.push({
+                ids: [devices[k].id],
+                status: "SUCCESS",
+                states: devStates,
+                errorCode: undefined
+              });
+              resolve();
+            }).catch(error => {
+              respCommands.push({
+                ids: [devices[k].id],
+                status: "ERROR",
+                errorCode: error
+              });
+              resolve();
+            });
+          }));
         }
       }
       Promise.all(promises).then(results => {

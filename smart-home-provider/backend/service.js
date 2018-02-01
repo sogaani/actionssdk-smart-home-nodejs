@@ -1,13 +1,12 @@
 const connector = require('./connector');
-const Light = require('./devices/light');
-const configl = require('./conf/broadlink_koizumi_light.json');
-const configt = require('./conf/broadlink_mitsubishi_thermostat.json');
 const Thermostat = require('./devices/thermostat');
+const Light = require('./devices/light');
+const Switch = require('./devices/switch');
 const datastore = require('../cloud/datastore');
-let light = new Light();
-let thermostat = new Thermostat();
+const fs = require('fs');
 
-
+let devices = {};
+let id = 0;
 waitConnection = function () {
     connector.canconnect()
         .then(() => {
@@ -17,8 +16,35 @@ waitConnection = function () {
             return datastore.resetDevices(uid);
         })
         .then(function (uid) {
-            light.initialize(0, configl);
-            thermostat.initialize(1, configt);
+            fs.readdir(__dirname + '/conf', function (err, files) {
+
+                files.forEach(function (file) {
+                    const config = require('./conf/' + file);
+                    let device;
+                    const _id = config.id || id;
+                    switch (config.type) {
+                        case 'Light':
+                            device = new Light();
+                            device.initialize(_id, config);
+                            break;
+                        case 'Thermostat':
+                            device = new Thermostat();
+                            device.initialize(_id, config);
+                            break;
+                        case 'Switch':
+                            device = new Switch();
+                            device.initialize(_id, config);
+                            break;
+                        default:
+                            console.log('not support type:', config.type);
+                            break;
+                    }
+                    if (device) {
+                        devices[_id] = device;
+                        id++;
+                    }
+                });
+            });
         }).catch(error => {
             console.log(error)
             setTimeout(() => {

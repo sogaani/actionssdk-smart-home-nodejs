@@ -1,4 +1,6 @@
 {
+    "id": "brthm",
+    "type": "Thermostat",
     "driver": "broadlink-driver",
     "customData": {
         "heatTemp": 20.0,

@@ -138,7 +138,6 @@ class BroadlinkDriver {
 
         this.args.bright = bright;
         const code = this.actions.brightness.includes('function') ? eval(this.actions.brightness) : this.actions.brightness;
-        console.log('brightness:', code);
         sequence = sequence.concat(code);
 
         this._exec(sequence);

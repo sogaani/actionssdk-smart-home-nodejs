@@ -7,10 +7,17 @@ class SmartSwitch extends SmartDevice {
     }
 
     initialize(id, config) {
-        const Driver = require('../driver/' + config.driver);
-        this.driver = new Driver();
+        const traits = [];
+        // const attributes = {};
+        const states = {};
 
-        this.driver.initialize(config);
+        if (!config.actions.on || !config.actions.off) {
+            console.error('Switch: not found on and off actions');
+            return false;
+        }
+
+        traits.push('action.devices.traits.OnOff');
+        states.on = false;
 
         const nameDefault = {
             name: 'Switch' + id
@@ -20,25 +27,29 @@ class SmartSwitch extends SmartDevice {
             properties: {
                 type: "action.devices.types.SWITCH",
                 name: config.name || nameDefault,
-                traits: this.driver.traits,
-                attributes: this.driver.attributes,
+                traits: traits,
+                // attributes: attributes,
                 willReportState: false
             },
-            states: this.driver.states
+            states: states
         };
+
+        const Driver = require('../driver/' + config.driver);
+        this.driver = new Driver(this.device, config);
+
         super.initialize();
     }
 
     _handleCommand(command) {
 
         //this.driver.change(command.params);
-        const changes = command.params;
+        const changes = command.states;
         if ('on' in changes) {
             this.driver.onOff(changes.on);
             console.log('updated switch on:', changes.on);
+            this.device.states.on = changes.on;
         }
 
-        this.device.states = Object.assign(this.device.states, this.driver.states);
         this._notifyStateChange(true);
     }
 }

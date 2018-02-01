@@ -1,4 +1,6 @@
 {
+    "id": "brml",
+    "type": "Light",
     "driver": "broadlink-driver",
     "mac": "34:ea:34:c7:b2:ec",
     "customData": {

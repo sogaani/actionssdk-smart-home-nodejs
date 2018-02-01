@@ -93,7 +93,7 @@ class SmartThermostat extends SmartDevice {
          * on If off, on restores the previous mode of the device.
          * heatcool If the device supports maintaining heating/cooling to target a range.
          */
-        const changes = command.params;
+        const changes = command.states;
         let states = {};
         console.log(changes);
         let temp;

@@ -85,7 +85,7 @@ class SmartLight extends SmartDevice {
     _handleCommand(command) {
 
         //this.driver.change(command.params);
-        const changes = command.params;
+        const changes = command.states;
 
         if ('on' in changes) {
             this.driver.onOff(changes.on);
