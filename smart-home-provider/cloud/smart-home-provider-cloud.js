@@ -214,6 +214,32 @@ app.post('/smart-home-api/sync', function (request, response) {
   });
 });
 
+/**
+ * exec command request
+ *
+ */
+app.post('/smart-home-api/exec', function (request, response) {
+
+  let authToken = authProvider.getAccessToken(request);
+
+  authProvider.getUid(authToken)
+    .then(uid => {
+      app.smartHomeExecCommand(uid, request.body.command, request.body.device)
+    })
+    .then(() => {
+      response.status(200)
+        .set({
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }).end();
+    })
+    .catch(error => {
+      response.status(403).set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }).json({ error: "invalid auth" });
+    });
+});
 
 const appPort = process.env.PORT || config.devPortSmartHome;
 

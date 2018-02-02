@@ -138,7 +138,7 @@ Auth.registerAuth = function (app) {
       return res.redirect(util.format(
         'https://accounts.google.com/o/oauth2/v2/auth?' +
         'client_id=%s&redirect_uri=%s&response_type=%s&state=%s&scope=%s' +
-        '&approval_prompt=force&access_type=offline',
+        '&access_type=offline&prompt=consent',
         client_id, encodeURIComponent(redirect_uri), response_type, state, scope));
     }
 
