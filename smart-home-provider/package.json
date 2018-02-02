@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js isLocal",
+    "backend": "node backend/service.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

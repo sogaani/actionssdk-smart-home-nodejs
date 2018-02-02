@@ -115,13 +115,13 @@ class SmartThermostat extends SmartDevice {
                 case 'on':
                     temp = temp || this.customData.prevTemp;
                     const _command = {
-                        params: {
+                        states: {
                             thermostatTemperatureSetpoint: temp,
                             thermostatMode: this.customData.prevMode
                         }
                     };
                     console.log('updated thermostat on');
-                    _handleCommand(_command);
+                    this._handleCommand(_command);
                     return;
                     break;
                 case 'heat':
