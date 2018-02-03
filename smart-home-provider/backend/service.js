@@ -2,6 +2,7 @@ const connector = require('./connector');
 const Thermostat = require('./devices/thermostat');
 const Light = require('./devices/light');
 const Switch = require('./devices/switch');
+const Scene = require('./devices/scene');
 const datastore = require('../cloud/datastore');
 const fs = require('fs');
 
@@ -34,6 +35,10 @@ waitConnection = function () {
                         case 'Switch':
                             device = new Switch();
                             device.initialize(_id, config);
+                            break;
+                        case 'Scene':
+                            device = new Scene();
+                            device.initialize(_id, config, devices);
                             break;
                         default:
                             console.log('not support type:', config.type);

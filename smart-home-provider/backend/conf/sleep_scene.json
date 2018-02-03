@@ -1,0 +1,23 @@
+{
+    "id": "sleepScene",
+    "type": "Scene",
+    "name": {
+        "name": "おやすみタイム"
+    },
+    "actions": {
+        "activeCommands": [
+            {
+                "id": "brml",
+                "states": {
+                    "on": false
+                }
+            },
+            {
+                "id": "brthm",
+                "states": {
+                    "thermostatMode": "off"
+                }
+            }
+        ]
+    }
+}

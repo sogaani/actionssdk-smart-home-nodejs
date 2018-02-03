@@ -1,7 +1,9 @@
 const BroadlinkJS = require('broadlinkjs-rm');
 const broadlink = new BroadlinkJS();
 const config = require('./broadlink.json');
+const Queue = require('promise-queue');
 
+const queue = new Queue(1, Infinity);
 const discoveredDevices = {};
 const Broadlink = {};
 const limit = 5;
@@ -98,7 +100,14 @@ Broadlink.sendData = (device = false, hexData = false) => {
     }
 
     const hexDataBuffer = new Buffer(hexData, 'hex');
-    device.sendData(hexDataBuffer);
+    queue.add(() => {
+        device.sendData(hexDataBuffer);
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve();
+            }, 200);
+        });
+    });
 }
 
 Broadlink.execCommand = (command) => {
@@ -117,9 +126,7 @@ Broadlink.execCommand = (command) => {
             console.log('Sending sequence..');
             for (var i in command.sequence) {
                 data = command.sequence[i];
-                setTimeout(() => {
-                    Broadlink.sendData(device, data);
-                }, 200 * i);
+                Broadlink.sendData(device, data);
             }
         } else {
             Broadlink.sendData(device, command.data);

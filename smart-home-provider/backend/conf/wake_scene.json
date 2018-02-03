@@ -1,0 +1,23 @@
+{
+    "id": "wakeScene",
+    "type": "Scene",
+    "name": {
+        "name": "おはようタイム"
+    },
+    "actions": {
+        "activeCommands": [
+            {
+                "id": "brml",
+                "states": {
+                    "on": true
+                }
+            },
+            {
+                "id": "brthm",
+                "states": {
+                    "thermostatMode": "on"
+                }
+            }
+        ]
+    }
+}
