@@ -23,6 +23,7 @@ const google_ha = require('../smart-home-app');
 const datastore = require('./datastore');
 const authProvider = require('./auth-provider');
 const config = require('./config-provider');
+const homeGraph = require('./home-graph');
 
 // Check that the API key was changed from the default
 if (config.smartHomeProviderApiKey === '<API_KEY>') {
@@ -48,7 +49,6 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: false }
 }));
-const requestSyncEndpoint = 'https://homegraph.googleapis.com/v1/devices:requestSync?key=';
 
 // frontend UI
 app.set('jsonp callback name', 'cid');
@@ -144,48 +144,6 @@ app.smartHomeExec = function (uid, device) {
   });
 };
 
-const https = require('https');
-let requestSyncAgent = new https.Agent({ keepAlive: true });
-
-app.requestSync = function (authToken, uid) {
-  // REQUEST_SYNC
-  return new Promise((resolve, reject) => {
-    const apiKey = config.smartHomeProviderApiKey;
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      agent: requestSyncAgent
-    };
-    optBody = {
-      'agentUserId': uid
-    };
-    options.body = JSON.stringify(optBody);
-    console.info("POST REQUEST_SYNC", requestSyncEndpoint + apiKey);
-    //console.info(`POST payload: ${JSON.stringify(options)}`);
-
-    get = function () {
-      fetch(requestSyncEndpoint + apiKey, options).
-        then(function (res) {
-          console.log("request-sync response", res.status, res.statusText);
-          resolve();
-        }).catch((error) => {
-          if (error && error.code == 'ECONNRESET') {
-            console.log(error);
-            requestSyncAgent.destroy();
-            requestSyncAgent = new https.Agent({ keepAlive: true });
-            // retry
-            get();
-            return;
-          }
-          reject(error)
-        });
-    }
-    get();
-  });
-};
-
 /**
  * exec sync request
  *
@@ -197,7 +155,7 @@ app.post('/smart-home-api/sync', function (request, response) {
 
   authProvider.getUid(authToken).then(_uid => {
     uid = _uid;
-    return app.requestSync(authToken, uid);
+    return homeGraph.requestSync(authToken, uid);
   }).then(() => {
     response.status(200)
       .set({

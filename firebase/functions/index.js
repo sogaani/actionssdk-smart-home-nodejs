@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
-const cloud = require('./app/cloud/smart-home-provider-cloud.js');
+let cloud;
+let homeGraph;
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 //
@@ -8,6 +9,8 @@ const cloud = require('./app/cloud/smart-home-provider-cloud.js');
 // });
 
 exports.smarthome = functions.https.onRequest((req, res) => {
+
+    if (!cloud) cloud = require('./app/cloud/smart-home-provider-cloud');
 
     // https://some-firebase-app-id.cloudfunctions.net/route
     // without trailing "/" will have req.path = null, req.url = null
@@ -22,10 +25,12 @@ exports.smarthome = functions.https.onRequest((req, res) => {
 
 exports.create = functions.firestore.document('{userId}/{deviceId}')
     .onCreate(event => {
-        return cloud.app.requestSync(null, event.params.userId);
+        if (!homeGraph) homeGraph = require('./app/cloud/home-graph');
+        return homeGraph.requestSync(null, event.params.userId);
     });
 
 exports.update = functions.firestore.document('{userId}/{deviceId}')
     .onUpdate(event => {
-        return cloud.app.requestSync(null, event.params.userId);
+        if (!homeGraph) homeGraph = require('./app/cloud/home-graph');
+        return homeGraph.requestSync(null, event.params.userId);
     });

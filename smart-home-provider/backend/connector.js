@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const express = require('express');
 const session = require('express-session');
 const authProvider = require('../cloud/auth-provider');
+const homeGraph = require('../cloud/home-graph');
 const fs = require('fs')
 
 const app = express();
@@ -44,7 +45,13 @@ Connector.sync = function () {
     if (!syncInterval)
         syncInterval = setInterval(Connector.sync, 1000 * 60 * 5);
 
-    Connector.callSmartHomeProviderCloud('/sync', 'POST', null).catch(error => console.error(error));
+    Connector.getUid()
+        .then(uid => {
+            homeGraph.requestSync(null, uid);
+        })
+        .catch(error => {
+            console.error('fail requestSync:', error);
+        });
 }
 
 Connector.getUid = function () {
