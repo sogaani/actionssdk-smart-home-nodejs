@@ -1,0 +1,28 @@
+{
+    "id": "lrml",
+    "type": "Light",
+    "driver": "broadlink-driver",
+    "mac": "34:ea:34:42:a0:04",
+    "customData": {
+        "onBrightness": 100,
+        "onTemperature": 6200
+    },
+    "attributes": {
+        "temperatureMinK": 2700,
+        "temperatureMaxK": 6500
+    },
+    "actions": {
+        "on": "2600560075370f0d100c0f2a11280e0e0f2a100d0e0e100c1128100c110c1028110c1029100c1128100c100d1028110c100c110c0f0d110c100c0e2b1028110c1029100c110c0e2a100d1028110c100c0f2a0f0e100c10000d050000",
+        "off": "260056007537100c100c0f2a10290e0e10290e0e0f0e0e0e0f2a100c0f0e0e2a0f0e0e2b0e0e0f2a100c0e0e0f2a0f0e0e0e0f0e0e0e0f2a0e2a0f2a10290e0e0f2a100d0e0e0e0e0f2a0e2a0f0e0e0e0f2a0f0e0e0e0f000d050000",
+        "temperature": "(function() {const codes = [];let curTemp = this.device.states.color.temperature;if (!this.device.states.on) {curTemp = this.actions.onTemperature;codes.push(this.actions.on);}if (curTemp > this.args.temp) {while (curTemp > this.args.temp) {curTemp -= this.actions.temperatureStepK;codes.push(this.actions.warm);}} else {while (curTemp < this.args.temp) {curTemp += this.actions.temperatureStepK;codes.push(this.actions.cool);}}this.device.states.color.temperature = curTemp;return codes;}.bind(this)())",
+        "warm": "2600ac007537100c100c11281128100c1128100c110c100c1128100c0f0e1028110c0f2a100c1128100c100d102811281128100c110c1028110c0e0e100d10280f0e100c1128100c0f0e0e0e11280e0e0f2a110c1028110009837437100c110c10281128100d1028110c110b110c0e2a110c100c0f2a100d0e2a110c0e2a100d0e0e0f2a10281128110c100c0f2a100c0f0e0e0e0f2a100c110c0f29110c100c0f0e0e2a110c0f2a100c10290f000d05000000000000000000000000",
+        "cool": "2600ac007437110c100c10281128110c1028110c100c110c1029100c100c1128100d1028110c1028110c100c0f2a10291028110c100c110c0e0e0f0d0f0e1029100c0f0e0e2a0f2a100c110c10280f0e0e2b100c1128100009807437100c110c10290e2a110c1029100c110b110c0e2a110c0e0e0f2a100d1028110c1028110c0e0e0f2a10290e2a110c0f0d110c100c0e0e110c0e2b0e0e110c0e2a11280f0d110c1028110c1029100c112810000d05000000000000000000000000",
+        "brightness": "(function() {const codes = [];if (this.args.bright == 0) {codes.push(this.actions.off);} else {let curBright = this.device.states.brightness;if (!this.device.states.on) {curBright = this.actions.onBrightness;codes.push(this.actions.on);}if (curBright > this.args.bright) {while (curBright > this.args.bright) {curBright -= this.actions.brightnessStepP;codes.push(this.actions.down);}} else {while (curBright < this.args.bright) {curBright += this.actions.brightnessStepP;codes.push(this.actions.up);}}this.device.states.brightness = curBright;}return codes;}.bind(this)())",
+        "down": "2600ac007239100c0f0e0e2a0f2a0e0f0e2a0f0e0f0d0f0e0e2a0f0e0e0e0f2a0e0f0e2a0f0d0f2a0f0e0e0e0e2b0e0e0f0e0e0e0f0e0e2a0f2a0e0e0f2a0e0e0f2a0f0e0e0e0f0e0e2a0f0d0f0e0e0f0e2a0f0e0e0e0f0009857338110c0f0d0f2a0e2b0e0e0f2a0f0e0e0e0e0e0f2a0e0e0f0e0e2b0e0e0f2a0f0d0f2a0e0e0f0e0e2a0f0e0e0f0e0e0e0e0f2a0e2a0f0e0e2b0e0e0f2a0f0e0e0e0e0e0f2a0e0e0f0e0e0e0f2a0f0e0e0e0e000d05000000000000000000000000",
+        "up": "2600ac0075360f0e100c102910280f0e1029100c0f0e100c1028110c100d1028110c1029100c1029100c100c1029100d100c110c100c100c1128100c1128100d0e2a110c100c11281028110c100c110c1029100c110c100009827437110c100c10291028110c1028110c110b110c1029100c0e0e1128100d0e2a110c1028110c100c1128100c110c0f0e0e0e0e0e1128100c0f2a100d0e2a110c100c0f2a1028110c100c110c0e2b100c110c0e000d05000000000000000000000000",
+        "temperatureStepK": 200,
+        "brightnessStepP": 5,
+        "onBrightness": 100,
+        "onTemperature": 6200
+    }
+}

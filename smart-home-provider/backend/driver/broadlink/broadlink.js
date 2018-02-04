@@ -44,7 +44,6 @@ broadlink.on('deviceReady', (device) => {
 Broadlink.getDevice = ({ host, learnOnly }) => {
     let device;
 
-    console.log("get device");
     if (host) {
         device = discoveredDevices[host];
     } else { // use the first one of no host is provided
@@ -72,22 +71,18 @@ Broadlink.getDevice = ({ host, learnOnly }) => {
                 }
             }
 
-            if (!device) console.log(`Learn Code (no device found at ${host})`)
-            if (!device && !discovering) {
-                console.log(`Attempting to discover RM devices for 5s`);
-
-                Broadlink.discoverDevices()
-            }
+            if (!device) console.log(`Learn Code (no device found at ${host})`);
         } else {
             device = discoveredDevices[hosts[0]];
 
             if (!device) console.log(`Send data (no device found at ${host})`);
-            if (!device && !discovering) {
-                console.log(`Attempting to discover RM devices for 5s`);
-
-                Broadlink.discoverDevices()
-            }
         }
+    }
+
+    if (!device && !discovering) {
+        console.log(`Attempting to discover RM devices for 5s`);
+
+        Broadlink.discoverDevices();
     }
 
     return device;
@@ -113,7 +108,10 @@ Broadlink.sendData = (device = false, hexData = false) => {
 Broadlink.execCommand = (command) => {
     let host = command.mac || command.ip;
     let device = Broadlink.getDevice({ host });
-    if (!device) return setTimeout(() => { console.log(command); Broadlink.execCommand(command); }, 1000);
+    if (!device) {
+        setTimeout(() => { console.log(command); Broadlink.execCommand(command); }, 1000);
+        return;
+    }
 
     if (!device) {
         console.log(`sendData(no device found at ${host})`);

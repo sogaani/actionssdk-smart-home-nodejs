@@ -20,8 +20,6 @@
         "brightness": "(function() {const codes = [];if (this.args.bright == 0) {codes.push(this.actions.off);} else {let curBright = this.device.states.brightness;if (!this.device.states.on) {curBright = this.actions.onBrightness;codes.push(this.actions.on);}if (curBright > this.args.bright) {while (curBright > this.args.bright) {curBright -= this.actions.brightnessStepP;codes.push(this.actions.down);}} else {while (curBright < this.args.bright) {curBright += this.actions.brightnessStepP;codes.push(this.actions.up);}}this.device.states.brightness = curBright;}return codes;}.bind(this)())",
         "down": "26005000000124911311141114111411141114111411143513111435133513351311143513351311141114351335131114111411141114111435131114111435133513351335133513000d05",
         "up": "26005000000124911311141114111411141114111411143513111435133513351311143513351311143513111435131114111411141114111411143513111435133513351335133513000d05",
-        "custom1": "26005000000124911311141114111411141114111411143513111435133513351311143513351311141114351311141114111411143513111435131114351335133513351311143513000d05",
-        "custom2": "26005000000124911311141114111411141114111411143513111435133513351311143513351311143513111411141114111411143513111411143513351335133513351311143513000d05",
         "temperatureStepK": 200,
         "brightnessStepP": 5,
         "onBrightness": 100,

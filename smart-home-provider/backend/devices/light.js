@@ -86,13 +86,13 @@ class SmartLight extends SmartDevice {
 
         //this.driver.change(command.params);
         const changes = command.states;
-
+        const beforeStates = Object.assign({}, this.device.states);
         if ('on' in changes) {
             this.driver.onOff(changes.on);
             if (changes.on) {
                 if (this.customData.onTemperature) this.device.states.color.temperature = this.customData.onTemperature;
                 if (this.customData.onBrightness) this.device.states.brightness = this.customData.onBrightness;
-            }else{
+            } else {
                 if (this.device.states.brightness) this.device.states.brightness = 0;
             }
             this.device.states.on = changes.on;
@@ -102,17 +102,24 @@ class SmartLight extends SmartDevice {
             if ('spectrumRGB' in changes.color) {
                 this.driver.spectrum(changes.color.spectrumRGB);
                 console.log('updated light spectrumRGB');
+                if (beforeStates.color.spectrumRGB == this.device.states.color.spectrumRGB) {
+                    this.device.states.color = changes.color;
+                }
             }
             if ('temperature' in changes.color) {
                 this.driver.temperature(changes.color.temperature);
                 console.log('updated light temperature');
+                if (beforeStates.color.temperature == this.device.states.color.temperature) {
+                    this.device.states.color = changes.color;
+                }
             }
-            this.device.states.color = changes.color;
         }
         if ('brightness' in changes) {
             this.driver.brightness(changes.brightness);
             console.log('updated light brightness');
-            this.device.states.brightness = changes.brightness;
+            if (beforeStates.brightness == this.device.states.brightness) {
+                this.device.states.brightness = changes.brightness;
+            }
         }
 
         this._notifyStateChange(true);
