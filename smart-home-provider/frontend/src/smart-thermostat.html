@@ -48,23 +48,19 @@ limitations under the License.
             <div slot="device-controls" class="layout horizontal center-justified">
                 <strong>Setpoint</strong>
                 <!-- Set potential setpoints to 60F (15C) - 83F (28C) -->
-                <paper-slider id="setpoint" title="Set Point" editable="true"
-                    value="[[device.states.thermostatTemperatureSetpoint]]"
-                    on-value-change="_handleSetpoint"
+                <paper-slider id="setpoint" title="Set Point" editable="true" value="[[device.states.thermostatTemperatureSetpoint]]" on-value-change="_handleSetpoint"
                     min="15" max="28"></paper-slider>
             </div>
             <iron-icon id="thermostat" icon="image:brightness-7" slot="device-icon"></iron-icon>
             <div slot="device-states" class="layout horizontal center-justified">
-                <paper-input
-                    id="ambient"
-                    label="Current"
-                    value="[[device.states.thermostatTemperatureAmbient]]"
-                    on-input="_handleAmbient"
+                <paper-input id="ambient" label="Current" value="[[device.states.thermostatTemperatureAmbient]]" on-input="_handleAmbient"
                     auto-validate pattern="[0-9]+[.]?[0-9]*">
                     <div suffix>ºC</div>
                 </paper-input>
                 <div class="layout vertical center-justified">
-                    <div>Mode:<br/><b>[[device.states.thermostatMode]]</b>
+                    <div>Mode:
+                        <br/>
+                        <b>[[device.states.thermostatMode]]</b>
                     </div>
                 </div>
             </div>
@@ -81,15 +77,25 @@ limitations under the License.
 
             _handleSetpoint() {
                 if (this.device) {
-                    this.device.states.thermostatTemperatureSetpoint = this.$.setpoint.value;
-                    this._notifyStateChange();
+                    if (this.device.states.thermostatTemperatureSetpoint != this.$.setpoint.value) {
+                        this.device.states.thermostatTemperatureSetpoint = this.$.setpoint.value;
+                        this._deviceChanged();
+                        const changes = {
+                            thermostatTemperatureSetpoint: this.device.states.thermostatTemperatureSetpoint
+                        }
+                        this._exec(changes);
+                    }
                 }
             }
 
             _handleAmbient() {
                 if (this.device) {
                     this.device.states.thermostatTemperatureAmbient = parseFloat(this.$.ambient.value);
-                    this._notifyStateChange();
+                    this._deviceChanged();
+                    const changes = {
+                        thermostatTemperatureAmbient: this.device.states.thermostatTemperatureAmbient
+                    }
+                    this._exec(changes);
                 }
             }
 

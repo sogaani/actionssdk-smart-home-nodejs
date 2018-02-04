@@ -45,7 +45,11 @@ limitations under the License.
             _handleOnOff() {
                 if (this.device) {
                     this.device.states.on = !this.device.states.on;
-                    this._notifyStateChange();
+                    this._deviceChanged();
+                    const changes = {
+                        on: this.device.states.on
+                    }
+                    this._exec(changes);
                 }
             }
 
@@ -53,10 +57,16 @@ limitations under the License.
                 if (!this.device) {
                     return;
                 }
-                window.requestAnimationFrame(() => {
-                    this.device.states.brightness = this.$.brightness.value;
-                    this._notifyStateChange();
-                });
+                //window.requestAnimationFrame(() => {
+                    if (this.device.states.brightness != this.$.brightness.value) {
+                        this.device.states.brightness = this.$.brightness.value;
+                        this._deviceChanged();
+                        const changes = {
+                            brightness: this.device.states.brightness
+                        }
+                        this._exec(changes);
+                    }
+                //});
             }
 
             _deviceChanged() {
@@ -87,13 +97,6 @@ limitations under the License.
                     this.$.light.style.color = '#000';
                 } else {
                     this.$.light.style.color = '#eee';
-                }
-                this.$.brightness.disabled = !this.device.states.on;
-            }
-
-            _exec(nameChanged) {
-                if (nameChanged) {
-                    this.light.nameChanged = true;
                 }
                 this.$.brightness.disabled = !this.device.states.on;
             }

@@ -29,8 +29,10 @@ exports.create = functions.firestore.document('{userId}/{deviceId}')
         return homeGraph.requestSync(null, event.params.userId);
     });
 
+/*
 exports.update = functions.firestore.document('{userId}/{deviceId}')
     .onUpdate(event => {
         if (!homeGraph) homeGraph = require('./app/cloud/home-graph');
         return homeGraph.requestSync(null, event.params.userId);
     });
+*/

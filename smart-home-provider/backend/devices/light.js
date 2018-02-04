@@ -92,6 +92,8 @@ class SmartLight extends SmartDevice {
             if (changes.on) {
                 if (this.customData.onTemperature) this.device.states.color.temperature = this.customData.onTemperature;
                 if (this.customData.onBrightness) this.device.states.brightness = this.customData.onBrightness;
+            }else{
+                if (this.device.states.brightness) this.device.states.brightness = 0;
             }
             this.device.states.on = changes.on;
             console.log('updated light on');

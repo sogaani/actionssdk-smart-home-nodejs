@@ -119,7 +119,6 @@ limitations under the License.
             <app-toolbar>
                 <paper-icon-button id="account" icon="account-box" on-tap="_showAccount"></paper-icon-button>
                 <div main-title>Smart Home Provider</div>
-                <paper-icon-button id="add" icon="add"></paper-icon-button>
             </app-toolbar>
         </app-header>
 
@@ -129,50 +128,9 @@ limitations under the License.
             <p id="progress-dialog-content"></p>
         </paper-dialog>
 
-        <paper-dialog id="modal" modal>
-            <div id="close">
-                <iron-icon icon="icons:close" dialog-confirm autofocus></iron-icon>
-            </div>
-            <div class="layout horizontal center-justified">
-                <h1>Add a new device</h1>
-                <button dialog-confirm autofocus class="square" id="lightSelector" on-tap="_addLight">
-                    <iron-icon icon="image:wb-incandescent"></iron-icon>
-                    <p>RGB Light</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="lightSelector" on-tap="_addMonochromeLight">
-                    <iron-icon icon="image:wb-iridescent"></iron-icon>
-                    <p>Monochrome Light</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="thermostatSelector" on-tap="_addThermostat">
-                    <iron-icon icon="image:brightness-7"></iron-icon>
-                    <p>Thermostat</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="sceneSelector" on-tap="_addScene">
-                    <iron-icon icon="image:slideshow"></iron-icon>
-                    <p>Scene</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="cameraSelector" on-tap="_addCamera">
-                    <iron-icon icon="image:camera-alt"></iron-icon>
-                    <p>Camera</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="vacuumSelector" on-tap="_addVacuum">
-                    <iron-icon icon="hardware:router"></iron-icon>
-                    <p>Vacuum</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="washerSelector" on-tap="_addWasher">
-                    <iron-icon icon="icons:save"></iron-icon>
-                    <p>Washer</p>
-                </button>
-                <button dialog-confirm autofocus class="square" id="refrigeratorSelector" on-tap="_addRefrigerator">
-                    <iron-icon icon="places:kitchen"></iron-icon>
-                    <p>Refrigerator</p>
-                </button>
-            </div>
-        </paper-dialog>
-
         <div id="no-devices-msg" hidden="[[hide]]">
             <p class="layout horizontal center-justified">
-                You currently don't have any devices set up. To set up a device, click the "+" button and take it online.
+                You currently don't have any devices set up.
             </p>
         </div>
 
@@ -236,6 +194,7 @@ limitations under the License.
     <script>
         var nextDeviceId = 0;
         var devices = {};
+        var USERID;
 
         function getNextDeviceId() {
             return nextDeviceId++;
@@ -286,10 +245,6 @@ limitations under the License.
                 this.washers = [];
                 this.refrigerators = [];
 
-                window.requestAnimationFrame(() => {
-                    this.$.add.addEventListener('click', e => this.$.modal.open());
-                });
-
                 this._refresh();
             },
 
@@ -321,30 +276,29 @@ limitations under the License.
             },
 
             _showAccount: function () {
-                this.$.toast.text = `Welcome ${window.USERNAME}`;
+                this.$.toast.text = `Welcome ${window.USERID}`;
                 this.$.toast.open();
             },
 
             _refresh: function () {
                 const options = {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + AUTH_TOKEN
-                    }
+                    method: 'GET'
                 };
 
-                return fetch(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/status', options)
-                    .then(function (response) {
-                        return response.json();
-                    }).then(function (json) {
-                        const uid = json.uid;
-                        delete json.uid;
-                        for (const key in json) {
-                            devices[key] = json[key];
+                return fetch('https://www.googleapis.com/oauth2/v1/userinfo?access_token=' + AUTH_TOKEN, options)
+                    .then(function (res) { return res.json() })
+                    .then(function (json) {
+                        USERID = json.id;
+                        const col = FIRESTORE.collection(USERID.toString(10));
+                        return col.get();
+                    })
+                    .then(function (querysnap) {
+                        let docs = querysnap.docs;
+                        for (let doc of docs) {
+                            const device = doc.data();
+                            devices[doc.ref.id] = device;
                         }
-                        console.log(devices);
-                        return this._handleRefresh(this, uid);
+                        this._handleRefresh(this, USERID);
                     }.bind(this));
             },
 
@@ -355,8 +309,8 @@ limitations under the License.
                     for (const id of Object.keys(devices)) {
                         devices[id].id = id;
                         delete devices[id].properties.id;
-                        devices[id].states.on = false;
-                        devices[id].states.online = false;
+                        //devices[id].states.on = false;
+                        //devices[id].states.online = false;
                         switch (devices[id].properties.type) {
                             case 'action.devices.types.LIGHT':
                                 app._addLight(null, devices[id]);
@@ -371,13 +325,13 @@ limitations under the License.
                                 app._addCamera(null, devices[id]);
                                 break;
                             case 'action.devices.types.VACUUM':
-                                devices[id].states.isRunning = false;
-                                devices[id].states.isPaused = false;
+                                //devices[id].states.isRunning = false;
+                                //devices[id].states.isPaused = false;
                                 app._addVacuum(null, devices[id]);
                                 break;
                             case 'action.devices.types.WASHER':
-                                devices[id].states.isRunning = false;
-                                devices[id].states.isPaused = false;
+                                //devices[id].states.isRunning = false;
+                                //devices[id].states.isPaused = false;
                                 app._addWasher(null, devices[id]);
                                 break;
                             case 'action.devices.types.REFRIGERATOR':
@@ -406,48 +360,6 @@ limitations under the License.
                 let nicknames = ['table lamp', 'reading lamp', 'doorway', 'stairway'];
                 if (light && light.hasOwnProperty("id")) {
                     this.push('lights', light);
-                } else {
-                    var lightId = getNextDeviceId();
-                    this.push('lights', {
-                        id: String(lightId),
-                        properties: {
-                            type: 'action.devices.types.LIGHT',
-                            traits: [
-                                'action.devices.traits.OnOff',
-                                'action.devices.traits.Brightness',
-                                'action.devices.traits.ColorSpectrum'
-                            ],
-                            name: {
-                                defaultNames: ['Smart Light'],
-                                name: 'Smart Light ' + lightId,
-                                nicknames: [this._getNickname(nicknames, this.lights.length, lightId)]
-                            },
-                            willReportState: false,
-                            roomHint: '',
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'g1337',
-                                swVersion: '1.0.11',
-                                hwVersion: '1.1'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'FkldJVJCmDNSaoLkoq0txiz8Byf2Hr'
-                            }
-                        },
-                        states: {
-                            on: false,
-                            online: true,
-                            brightness: 80,
-                            color: {
-                                name: 'cerulean',
-                                spectrumRGB: 31655
-                            }
-                        }
-                    });
-
-                    window.requestAnimationFrame(() => {
-                        this.$['light-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -457,52 +369,6 @@ limitations under the License.
                 let nicknames = ['table lamp', 'reading lamp', 'doorway', 'stairway'];
                 if (light && light.hasOwnProperty("id")) {
                     this.push('lights', light);
-                } else {
-                    var lightId = getNextDeviceId();
-                    this.push('lights', {
-                        id: String(lightId),
-                        properties: {
-                            type: 'action.devices.types.LIGHT',
-                            traits: [
-                                'action.devices.traits.OnOff',
-                                'action.devices.traits.Brightness',
-                                'action.devices.traits.ColorTemperature'
-                            ],
-                            attributes: {
-                                'temperatureMinK': 2000,
-                                'temperatureMaxK': 6500
-                            },
-                            name: {
-                                defaultNames: ['Smart Light'],
-                                name: 'Smart Light ' + lightId,
-                                nicknames: [this._getNickname(nicknames, this.lights.length, lightId)]
-                            },
-                            willReportState: false,
-                            roomHint: '',
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'h1337',
-                                swVersion: '1.0.9',
-                                hwVersion: '1.0'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'FkldJVJCmDNSaoLkoq0txiz8Byf2Hr'
-                            }
-                        },
-                        states: {
-                            on: false,
-                            online: true,
-                            brightness: 80,
-                            color: {
-                                name: 'soft white',
-                                temperature: 2700
-                            }
-                        }
-                    });
-
-                    window.requestAnimationFrame(() => {
-                        this.$['light-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -512,47 +378,6 @@ limitations under the License.
                 let nicknames = ['wall thermostat', 'upstairs thermostat'];
                 if (thermostat && thermostat.hasOwnProperty("id")) {
                     this.push('thermostats', thermostat);
-                } else {
-                    var thermostatId = getNextDeviceId();
-                    this.push('thermostats', {
-                        id: String(thermostatId),
-                        properties: {
-                            type: 'action.devices.types.THERMOSTAT',
-                            traits: [
-                                'action.devices.traits.TemperatureSetting'
-                            ],
-                            name: {
-                                defaultNames: ['Smart Thermostat'],
-                                name: 'Smart Thermostat ' + thermostatId,
-                                nicknames: [this._getNickname(nicknames, this.thermostats.length, thermostatId)]
-                            },
-                            willReportState: false,
-                            roomHint: 'hallway',
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'g1338',
-                                swVersion: '1.0.31',
-                                hwVersion: '1.1'
-                            },
-                            attributes: {
-                                availableThermostatModes: 'off,heat,cool,on',
-                                thermostatTemperatureUnit: 'C'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'SGs84HiURHSb6ggrGjiv9jJ3t7U4ze'
-                            }
-                        },
-                        states: {
-                            online: true,
-                            thermostatMode: 'cool',
-                            thermostatTemperatureSetpoint: 23.0,
-                            thermostatTemperatureAmbient: 25.1,
-                            thermostatHumidityAmbient: 45.3
-                        }
-                    });
-                    window.requestAnimationFrame(() => {
-                        this.$['thermostat-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -561,42 +386,6 @@ limitations under the License.
                 this.deviceCount++;
                 if (scene && scene.hasOwnProperty("id")) {
                     this.push('scenes', scene);
-                } else {
-                    var sceneId = getNextDeviceId();
-                    this.push('scenes', {
-                        id: String(sceneId),
-                        properties: {
-                            type: 'action.devices.types.SCENE',
-                            traits: [
-                                'action.devices.traits.Scene'
-                            ],
-                            name: {
-                                defaultNames: [],
-                                name: 'Smart Scene ' + sceneId,
-                                nicknames: [this._getNickname(undefined, this.scenes.length, sceneId)]
-                            },
-                            willReportState: false,
-                            attributes: {
-                                sceneReversible: true
-                            },
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'g1339',
-                                swVersion: '1.0.31',
-                                hwVersion: '1.1'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'fiGgZ0vrhFRgwf5XJkna2GRwO8z80J'
-                            }
-                        },
-                        states: {
-                            online: true,
-                            on: false
-                        }
-                    });
-                    window.requestAnimationFrame(() => {
-                        this.$['scene-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -606,42 +395,6 @@ limitations under the License.
                 let nicknames = ['backyard camera', 'security camera'];
                 if (camera && camera.hasOwnProperty("id")) {
                     this.push('cameras', camera);
-                } else {
-                    var cameraId = getNextDeviceId();
-                    this.push('cameras', {
-                        id: String(cameraId),
-                        properties: {
-                            type: 'action.devices.types.CAMERA',
-                            traits: [
-                                'action.devices.traits.CameraStream'
-                            ],
-                            name: {
-                                defaultNames: ['Smart Camera ' + cameraId],
-                                name: 'Smart Camera ' + cameraId,
-                                nicknames: [this._getNickname(nicknames, this.cameras.length, cameraId)]
-                            },
-                            willReportState: false,
-                            attributes: {
-                                'cameraStreamSupportedProtocols': ["mp4", "hls"]
-                            },
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'g1340',
-                                swVersion: '1.0.31',
-                                hwVersion: '1.1'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'fiGgZ0vrhFRgwf5XJkna2GRwO8z80J'
-                            }
-                        },
-                        states: {
-                            online: true,
-                            on: false
-                        }
-                    });
-                    window.requestAnimationFrame(() => {
-                        this.$['camera-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -651,83 +404,6 @@ limitations under the License.
                 let nicknames = ['kitchen vacuum', 'robo vacuum']
                 if (vacuum && vacuum.hasOwnProperty("id")) {
                     this.push('vacuums', vacuum);
-                } else {
-                    var vacuumId = getNextDeviceId();
-                    this.push('vacuums', {
-                        id: String(vacuumId),
-                        properties: {
-                            type: 'action.devices.types.VACUUM',
-                            traits: [
-                                'action.devices.traits.OnOff',
-                                'action.devices.traits.StartStop',
-                                'action.devices.traits.Modes',
-                                'action.devices.traits.Toggles',
-                                'action.devices.traits.Dock'
-                            ],
-                            name: {
-                                defaultNames: ['Smart Vacuum'],
-                                name: 'Smart Vacuum ' + vacuumId,
-                                nicknames: [this._getNickname(nicknames, this.vacuums.length, vacuumId)]
-                            },
-                            willReportState: false,
-                            attributes: {
-                                availableToggles: [{
-                                    name: "quiet",
-                                    name_values: [{
-                                        name_synonym: ["quiet", "silent"],
-                                        lang: "ENGLISH"
-                                    }, {
-                                        name_synonym: ["ruhig", "still"],
-                                        lang: "GERMAN"
-                                    }]
-                                }],
-                                availableModes: [{
-                                    name: "speed",
-                                    name_values: [{
-                                        name_synonym: ["speed", "velocity"],
-                                        lang: "ENGLISH"
-                                    }],
-                                    settings: [{
-                                        setting_name: "slow",
-                                        setting_values: [{
-                                            setting_synonym: ["slow", "sluggish"]
-                                        }]
-                                    }, {
-                                        setting_name: "fast",
-                                        setting_values: [{
-                                            setting_synonym: ["fast", "quick"]
-                                        }]
-                                    }]
-                                }],
-                                pausable: false
-                            },
-                            roomHint: '',
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'g1400',
-                                swVersion: '1.0.11',
-                                hwVersion: '1.0'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'FkldJVJCmDNSaoLkoq0txiz8Byf2Hr'
-                            }
-                        },
-                        states: {
-                            on: false,
-                            online: true,
-                            isRunning: false,
-                            isPaused: false,
-                            currentModeSettings: {
-                                speed: "slow"
-                            },
-                            currentToggleSettings: {
-                                quiet: false
-                            }
-                        }
-                    });
-                    window.requestAnimationFrame(() => {
-                        this.$['vacuum-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -737,102 +413,6 @@ limitations under the License.
                 let nicknames = ['washing machine', 'acme washer']
                 if (washer && washer.hasOwnProperty("id")) {
                     this.push('washers', washer);
-                } else {
-                    var washerId = getNextDeviceId();
-                    this.push('washers', {
-                        id: String(washerId),
-                        properties: {
-                            type: 'action.devices.types.WASHER',
-                            traits: [
-                                'action.devices.traits.OnOff',
-                                'action.devices.traits.StartStop',
-                                'action.devices.traits.Modes',
-                                'action.devices.traits.Toggles',
-                                'action.devices.traits.RunCycle'
-                            ],
-                            name: {
-                                defaultNames: ['Smart Washer'],
-                                name: 'Smart Washer ' + washerId,
-                                nicknames: [this._getNickname(nicknames, this.washers.length, washerId)]
-                            },
-                            willReportState: false,
-                            attributes: {
-                                availableModes: [
-                                    {
-                                        name: "load",
-                                        name_values: [{
-                                            name_synonym: ["load", "size", "load size"],
-                                            lang: "ENGLISH"
-                                        }],
-                                        settings: [{
-                                            setting_name: "small",
-                                            setting_values: [{
-                                                setting_synonym: ["small", "half"],
-                                                lang: "ENGLISH"
-                                            }]
-                                        }, {
-                                            setting_name: "large",
-                                            setting_values: [{
-                                                setting_synonym: ["large", "full"],
-                                                lang: "ENGLISH"
-                                            }]
-                                        }],
-                                        ordered: true
-                                    }
-                                ],
-                                availableToggles: [
-                                    {
-                                        name: "extra rinse",
-                                        name_values: [{
-                                            name_synonym: ["extra", "rinse"],
-                                            lang: "ENGLISH"
-                                        }]
-                                    }, {
-                                        name: "permanent press",
-                                        name_values: [{
-                                            name_synonym: ["permanent", "press"],
-                                            lang: "ENGLISH"
-                                        }]
-                                    },
-                                ],
-                                pausable: true
-                            },
-                            roomHint: '',
-                            deviceInfo: {
-                                manufacturer: 'Smart Home Provider',
-                                model: 'g1401',
-                                swVersion: '1.0.11',
-                                hwVersion: '1.0'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'FkldJVJCmDNSaoLkoq0txiz8Byf2Hr'
-                            }
-                        },
-                        states: {
-                            on: false,
-                            online: true,
-                            isRunning: false,
-                            isPaused: false,
-                            currentRunCycle: [{
-                                currentCycle: "rinse",
-                                nextCycle: "spin",
-                                lang: "en"
-                            }],
-                            currentTotalRemainingTime: 3600,
-                            currentCycleRemainingTime: 1800,
-                            currentModeSettings: {
-                                load: "large"
-                            },
-                            currentToggleSettings: {
-                                extraRinse: false,
-                                permanentPress: false
-                            }
-                        }
-                    });
-
-                    window.requestAnimationFrame(() => {
-                        this.$['washer-list'].fire('iron-resize');
-                    });
                 }
             },
 
@@ -842,54 +422,6 @@ limitations under the License.
                 let nicknames = ['kitchen refrigerator', 'mini-fridge', 'garage freezer'];
                 if (refrigerator && refrigerator.hasOwnProperty("id")) {
                     this.push('refrigerators', refrigerator);
-                } else {
-                    var refrigeratorId = getNextDeviceId();
-                    this.push('refrigerators', {
-                        id: String(refrigeratorId),
-                        properties: {
-                            type: 'action.devices.types.REFRIGERATOR',
-                            traits: [
-                                'action.devices.traits.OnOff',
-                                'action.devices.traits.Toggles'
-                            ],
-                            attributes: {
-                                availableToggles: [{
-                                    name: "quiet",
-                                    name_values: [{
-                                        name_synonym: ["quiet", "silent"],
-                                        lang: "en"
-                                    }]
-                                }]
-                            },
-                            name: {
-                                defaultNames: ['Smart Fridge'],
-                                name: 'Smart Refrigerator ' + refrigeratorId,
-                                nicknames: [this._getNickname(nicknames, this.refrigerators.length, refrigeratorId)]
-                            },
-                            willReportState: false,
-                            roomHint: '',
-                            deviceInfo: {
-                                manufacturer: 'Sirius Cybernetics Corporation',
-                                model: '2331B',
-                                swVersion: '11.4',
-                                hwVersion: '11.2'
-                            },
-                            customData: {
-                                smartHomeProviderId: 'FkldJVJCmDNSaoLkoq0txiz8Byf2Hr'
-                            }
-                        },
-                        states: {
-                            on: false,
-                            online: true,
-                            currentToggleSettings: {
-                                quiet: false
-                            }
-                        }
-                    });
-
-                    window.requestAnimationFrame(() => {
-                        this.$['refrigerator-list'].fire('iron-resize');
-                    });
                 }
             }
         });

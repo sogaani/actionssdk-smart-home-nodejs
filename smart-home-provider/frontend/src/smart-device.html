@@ -39,7 +39,7 @@ limitations under the License.
                 margin-right: 0px;
             }
 
-             ::slotted(iron-icon) {
+            ::slotted(iron-icon) {
                 padding-top: 24px;
                 padding-bottom: 24px;
                 width: 128px;
@@ -66,11 +66,10 @@ limitations under the License.
 
         <div class="card">
             <div id="button-bar" class="layout horizontal justified">
-                <div id="device-id" class="circle"></div>
+                <div id="device-id" class="square"></div>
                 <div class="flex"></div>
 
-                <paper-icon-button id="cloud" icon="cloud-off" on-tap="_handleCloud"></paper-icon-button>
-                <paper-icon-button icon="delete" on-tap="_handleDelete"></paper-icon-button>
+                <paper-icon-button id="cloud" icon="cloud-off"></paper-icon-button>
             </div>
 
             <!-- icon -->
@@ -118,8 +117,8 @@ limitations under the License.
                         return;
                     }
 
-                    console.log(this.device);
-                    console.log(this.$);
+                    //console.log(this.device);
+                    //console.log(this.$);
 
                     if (this.$['smart-device'] && !this._smartDevice) {
                         // Obtain the containing 'smart-device' of a child element
@@ -128,63 +127,31 @@ limitations under the License.
                     }
 
                     this._initialized = true;
-                    console.log(this);
-                    console.log(this.$);
+                    //console.log(this);
+                    //console.log(this.$);
 
                     if (this._smartDevice) {
+                        // Set the initial properties of common fields
+                        this._smartDevice.$['device-id'].innerHTML = this.device.id;
+                        this._smartDevice.$.nickname.value = this.device.properties.name.nicknames ? this.device.properties.name.nicknames[0] : '';
+                        this._smartDevice.$.name.value = this.device.properties.name.name;
+                        this._smartDevice.$.defaultName.innerHTML = this.device.properties.name.defaultNames ? this.device.properties.name.defaultNames[0] : '';
+
                         // Functions to run on child elements.
                         this._smartDevice.$.nickname.addEventListener('keydown', this._handleNameOrNicknameChange.bind(this));
                         this._smartDevice.$.nickname.addEventListener('blur', this._execNameOrNicknameChange.bind(this));
                         this._smartDevice.$.name.addEventListener('keydown', this._handleNameOrNicknameChange.bind(this));
                         this._smartDevice.$.name.addEventListener('blur', this._execNameOrNicknameChange.bind(this));
 
-                        // Set the initial properties of common fields
-                        this._smartDevice.$['device-id'].innerHTML = this.device.id;
-                        this._smartDevice.$.nickname.value = this.device.properties.name.nicknames[0];
-                        this._smartDevice.$.name.value = this.device.properties.name.name;
-                        this._smartDevice.$.defaultName.innerHTML = this.device.properties.name.defaultNames[0];
-
-                        this._handleRegister();
+                        this._changeEventSource();
                     }
                 });
-            }
-
-            _handleCloud() {
-                this.device.states.online = !this.device.states.online;
-                this._handleRegister();
-                this._changeEventSource();
-            }
-
-            _handleRegister() {
-                // Register source if undefined
-                console.log(this);
-
-                this._callSmartHomeProviderCloud('/register-device', 'POST', this.device)
-                    .then(this._changeEventSource.bind(this))
-                    .catch(function (error) {
-                        console.log('>>> failed to register device with Smart Home Provider cloud:', error);
-                    });
-            }
-
-            _handleDelete() {
-                this._callSmartHomeProviderCloud('/remove-device', 'POST', this.device)
-                    .catch(function (error) {
-                        console.log('>>> failed to remove device with Smart Home Provider cloud:', error);
-                    });
-                if (this.unsubscribe) this.unsubscribe();
-
-                const app = document.querySelector('my-app');
-                const devices = app[this.type];
-                for (let i = 0; i < devices.length; i++) {
-                    if (devices[i].id == this.device.id) {
-                        app.removeDevice(this.type, i);
-                    }
-                }
             }
 
             _execNameOrNicknameChange(event) {
                 // occurs after enter/tab key pressed or on tapout from input field
                 if (event.target.id == 'nickname') {
+                    if (!this.device.properties.name.nicknames) this.device.properties.name.nicknames = [];
                     this.device.properties.name.nicknames[0] = event.target.value;
                 }
                 else if (event.target.id == 'name') {
@@ -197,58 +164,24 @@ limitations under the License.
                 if (event.which == ENTERKEY) this.blur();
             }
 
-            _callSmartHomeProviderCloud(path, method, opt_body) {
-                const options = {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + AUTH_TOKEN
-                    }
-                };
-                if (opt_body) options.body = JSON.stringify(opt_body);
-                return fetch(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + path, options);
-            }
-
             _changeEventSource() {
                 if (!this.device.states.online) {
                     // going offline
-                    if(this.unsubscribe) this.unsubscribe();
+                    if (this.unsubscribe) this.unsubscribe();
                 } else {
-                    const options = {
-                        method: 'GET'
-                    };
-
-                    fetch('https://www.googleapis.com/oauth2/v1/userinfo?access_token=' + AUTH_TOKEN, options)
-                        .then(res => res.json())
-                        .then(function (json) {
-                            this._listenFirestore(json.id);
-                        }.bind(this));
-
-                    /*
-                // going online
-                this._source = new EventSource(SMART_HOME_PROVIDER_CLOUD_ENDPOINT + '/device-connection/' + this.device.id);
-                this._source.addEventListener('change', function (e) {
-                    this._changeState(JSON.parse(e.data));
-                }.bind(this));
-                this._source.addEventListener('pullUp', function (e) {
-                    this._exec();
-                }.bind(this));
-                this._source.addEventListener('error', function (error) {
-                    if (error.eventPhase == 2) {
-                        console.log('>>> event source closed');
-                        setTimeout(this._changeEventSource.bind(this), 30000);
-                        return;
-                    } else {
-                        console.error('>>> error in event source:', error);
-                    }
-                }.bind(this));
-                */
+                    this._listenFirestore(USERID);
                 }
-                this._notifyStateChange();
+                this._deviceChanged();
             }
 
             _listenFirestore(id) {
+                let first = true;
                 const onDatabaseChange = function (doc) {
+                    if (first) {
+                        first = false;
+                        return;
+                    }
+
                     console.log(doc.data());
                     const data = doc.data();
                     const states = data && data.states ? data.states : {};
@@ -263,23 +196,24 @@ limitations under the License.
                     const value = changes[name];
                     this.set('device.states.' + name, value);
                 }
-                this._notifyStateChange();
+
+                this._deviceChanged();
             }
 
             _notifyStateChange(nameChanged) {
                 this._deviceChanged();
-                if (this.device.states.online) this._exec(nameChanged);
+                if (this._initialized && this.device.states.online) this._exec(this.device.states, nameChanged);
             }
 
             _deviceChanged() {
-                console.log("Device changed!", this.device.states);
+                //console.log("Device changed!", this.device.states);
                 if (!this._initialized) {
                     this.initialize();
                     return;
                 }
-                console.log('Go through with device setup');
+                //console.log('Go through with device setup');
                 const app = document.querySelector('my-app');
-                app.showToast(`${this.device.properties.name.nicknames[0]} state changed`);
+                app.showToast(`${this.device.properties.name.name} state changed`);
 
                 if (this._smartDevice) {
                     this._smartDevice.$.cloud.icon = this.device.states.online ? 'cloud' : 'cloud-off';
@@ -288,15 +222,21 @@ limitations under the License.
                 }
             }
 
-            _exec(nameChanged) {
+            _exec(changes, nameChanged) {
                 if (nameChanged) {
                     this.device.nameChanged = true;
                 } else {
                     this.device.nameChanged = false;
+
+                    const command = {
+                        states: changes
+                    };
+                    FIRESTORE.collection(USERID.toString(10)).doc(this.device.id.toString(10)).collection('commands').add(command)
+                        .then(ref => {
+                            console.log('>>> exec to Firestore');
+                        }).catch(error => console.log(error));
                 }
-                this._callSmartHomeProviderCloud('/exec', 'POST', this.device).then(function () {
-                    console.log('>>> exec to Smart Home Provider Cloud');
-                });
+
             }
         }
         customElements.define(SmartDevice.is, SmartDevice);

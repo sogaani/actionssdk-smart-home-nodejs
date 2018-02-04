@@ -27,7 +27,8 @@
   "morgan": "^1.7.0",
   "ngrok": "^2.2.5",
   "node-fetch": "^1.6.3",
-  "broadlinkjs-rm": "github:sogaani/broadlinkjs-rm"
+  "broadlinkjs-rm": "github:sogaani/broadlinkjs-rm",
+  "promise-queue": "^2.2.5"
  },
  "devDependencies": {
   "cpx": "^1.5.0",
